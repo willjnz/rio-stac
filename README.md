@@ -268,7 +268,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
             "valid_percent": 0.00009564764936336924
           },
           "histogram": {
-            "count": 11,
+            "count": 10,
             "min": 1.0,
             "max": 7872.0,
             "buckets": [

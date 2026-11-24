@@ -192,7 +192,7 @@ def _get_stats(
             raise e
 
     stats["histogram"] = {
-        "count": len(edges),
+        "count": len(sample),
         "min": float(edges.min()),
         "max": float(edges.max()),
         "buckets": sample.tolist(),

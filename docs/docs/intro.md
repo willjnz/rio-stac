@@ -91,7 +91,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
           "valid_percent": 9.564764936336924e-05
         },
         "histogram": {
-          "count": 11,
+          "count": 10,
           "min": 1,
           "max": 7872,
           "buckets": [503460, 0, 0, 161792, 283094, 0, 0, 0, 87727, 9431]
@@ -399,7 +399,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "valid_percent": 0.00009564764936336924
           },
           "histogram": {
-            "count": 11,
+            "count": 10,
             "min": 1.0,
             "max": 7872.0,
             "buckets": [
@@ -675,7 +675,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "valid_percent": 49.83785997057175
           },
           "histogram": {
-            "count": 11,
+            "count": 10,
             "min": 0.0,
             "max": 255.0,
             "buckets": [
@@ -705,7 +705,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "valid_percent": 49.83785997057175
           },
           "histogram": {
-            "count": 11,
+            "count": 10,
             "min": 0.0,
             "max": 255.0,
             "buckets": [
@@ -735,7 +735,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "valid_percent": 49.83785997057175
           },
           "histogram": {
-            "count": 11,
+            "count": 10,
             "min": 0.0,
             "max": 255.0,
             "buckets": [
