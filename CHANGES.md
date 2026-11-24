@@ -1,4 +1,8 @@
 
+## Unreleased
+
+* fix `raster:bands` histogram `count`: it is now the number of buckets, as the raster extension defines it (was the number of bucket edges, one more)
+
 ## 0.12.0 (2025-09-17)
 
 * remove python 3.9 support

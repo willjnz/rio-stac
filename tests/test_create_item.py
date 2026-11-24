@@ -376,6 +376,7 @@ def test_stats_unique_values():
     assert "raster:bands" in item_dict["assets"]["asset"]
     stats = item_dict["assets"]["asset"]["raster:bands"][9]["histogram"]
     assert len(stats["buckets"]) == 3
+    assert stats["count"] == 3
 
     # Should not raise warnings when bins is good
     with warnings.catch_warnings():
@@ -406,6 +407,7 @@ def test_create_item_raster_custom_histogram():
     item_dict = item.to_dict()
     stats = item_dict["assets"]["asset"]["raster:bands"][0]["histogram"]
     assert len(stats["buckets"]) == 5
+    assert stats["count"] == 5
     assert stats["max"] == 10
     assert stats["min"] == 0
 
