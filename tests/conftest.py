@@ -1,5 +1,6 @@
 """``pytest`` configuration."""
 
+import pystac
 import pytest
 import rasterio
 
@@ -21,3 +22,18 @@ def runner():
     from click.testing import CliRunner
 
     return CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def _pystac_stac_version(monkeypatch):
+    """Reset pystac's process-wide STAC version around every test."""
+    monkeypatch.delenv("PYSTAC_STAC_VERSION_OVERRIDE", raising=False)
+    yield
+    pystac.set_stac_version(None)
+
+
+@pytest.fixture(params=["1.0.0", "1.1.0"])
+def stac_version(request):
+    """Run a test once for each STAC version rio-stac supports."""
+    pystac.set_stac_version(request.param)
+    return request.param

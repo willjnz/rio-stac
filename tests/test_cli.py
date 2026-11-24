@@ -132,3 +132,22 @@ def test_rio_stac_cli(runner):
             assert "proj:projjson" not in stac_item["properties"]
             assert "raster:bands" in stac_item["assets"]["asset"]
             assert "eo:bands" in stac_item["assets"]["asset"]
+
+
+def test_rio_stac_cli_extension_versions(runner):
+    """Extension version options are validated and listed in --help."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+
+    result = runner.invoke(stac, ["--help"])
+    assert "--projection-extension-version [v1.1.0]" in result.output
+    assert "--raster-and-eo-extension-version [v1.1.0]" in result.output
+    assert "PYSTAC_STAC_VERSION_OVERRIDE" in result.output
+
+    result = runner.invoke(stac, [src_path, "--projection-extension-version", "v3.0.0"])
+    assert result.exit_code == 2
+
+    result = runner.invoke(
+        stac, [src_path], env={"PYSTAC_STAC_VERSION_OVERRIDE": "3.0.0"}
+    )
+    assert result.exit_code == 2
+    assert "pystac is writing STAC 3.0.0" in result.output
