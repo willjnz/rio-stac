@@ -30,7 +30,7 @@ Options:
   --with-eo / --without-eo          Add the 'eo' extension and properties (default to True).
   --projection-extension-version [v1.1.0|v2.0.0|v2.1.0]
                                     'projection' extension version. Defaults to the version matching the STAC version.
-  --raster-and-eo-extension-version [v1.1.0]
+  --raster-and-eo-extension-version [v1.1.0|v2.0.0]
                                     'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the version matching the STAC version.
   --max-raster-size INTEGER         Limit array size from which to get the raster statistics (default to 1024).
   --densify-geom INTEGER            Densifies the number of points on each edges of the polygon geometry to account for non-linear transformation.

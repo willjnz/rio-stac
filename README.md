@@ -201,7 +201,7 @@ The extension versions default to the version matching the STAC version, and can
 | Extension | Allowed | Default with STAC 1.0.0 | Default with STAC 1.1.0 |
 | --- | --- | --- | --- |
 | [projection](https://github.com/stac-extensions/projection) | `v1.1.0`, `v2.0.0`, `v2.1.0` | `v1.1.0` | `v2.1.0` |
-| [raster](https://github.com/stac-extensions/raster) and [eo](https://github.com/stac-extensions/eo) | `v1.1.0` | `v1.1.0` | `v1.1.0` |
+| [raster](https://github.com/stac-extensions/raster) and [eo](https://github.com/stac-extensions/eo) | `v1.1.0`, `v2.0.0` (STAC 1.1.0 only, falls back to `v1.1.0` with a warning under STAC 1.0.0) | `v1.1.0` | `v1.1.0` |
 
 Only released versions that rio-stac writes exactly are accepted. Choosing a version older than the default for the STAC version warns.
 

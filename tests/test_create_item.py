@@ -529,3 +529,87 @@ def test_proj_defaults_stac_1_1(stac_version):
     assert properties["proj:code"] == "EPSG:4326"
     assert "proj:bbox" not in properties
     assert "proj:geometry" not in properties
+
+
+@stac_1_1
+def test_create_item_bands_v2(stac_version):
+    """raster and eo v2.0.0 write STAC 1.1 `bands`."""
+    raster_url = "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
+    eo_url = "https://stac-extensions.github.io/eo/v2.0.0/schema.json"
+
+    # Single band: fields on the asset, no `bands`, no eo extension (no eo:* field)
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(
+        src_path,
+        with_raster=True,
+        with_eo=True,
+        raster_and_eo_extension_version="v2.0.0",
+    )
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == [raster_url]
+    asset = item_dict["assets"]["asset"]
+    assert "bands" not in asset
+    assert "raster:bands" not in asset
+    assert "eo:bands" not in asset
+    assert "name" not in asset
+    with rasterio.open(src_path) as src_dst:
+        (info,) = get_raster_info(src_dst)
+    assert asset["data_type"] == "uint16"
+    assert asset["statistics"] == info["statistics"]
+    assert asset["raster:histogram"] == info["histogram"]
+    assert asset["raster:scale"] == info["scale"]
+    assert asset["raster:offset"] == info["offset"]
+    assert asset["raster:sampling"] == info["sampling"]
+
+    # Multiple bands: shared values on the asset
+    src_path = os.path.join(
+        PREFIX, "S2A_MSIL2A_20220722T105631_N0400_R094_T31TCN_20220722T171159.tif"
+    )
+    item = create_stac_item(
+        src_path,
+        with_raster=True,
+        with_eo=True,
+        raster_and_eo_extension_version="v2.0.0",
+    )
+    item.validate()
+    asset = item.to_dict()["assets"]["asset"]
+    assert asset["nodata"] == "nan"
+    assert asset["data_type"] == "float32"
+    with rasterio.open(src_path) as src_dst, warnings.catch_warnings():
+        # histogram fallback for homogeneous bands (tested elsewhere)
+        warnings.simplefilter("ignore", UserWarning)
+        info = get_raster_info(src_dst)
+    assert len(asset["bands"]) == len(info) == 14
+    for ix, (band, band_info) in enumerate(zip(asset["bands"], info), 1):
+        assert band["name"] == f"b{ix}"
+        assert band["statistics"] == band_info["statistics"]
+        assert band["raster:histogram"] == band_info["histogram"]
+        # shared values are only on the asset
+        assert "nodata" not in band
+        assert "data_type" not in band
+
+    # Cloud cover: eo extension declared
+    src_path = os.path.join(PREFIX, "dataset_cloud_date_metadata.tif")
+    item = create_stac_item(
+        src_path,
+        with_raster=True,
+        with_eo=True,
+        raster_and_eo_extension_version="v2.0.0",
+    )
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == [raster_url, eo_url]
+    assert item_dict["properties"]["eo:cloud_cover"] == 2
+    assert len(item_dict["assets"]["asset"]["bands"]) == 3
+
+    # `assets` passed: no band fields written, so no raster extension
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(
+        src_path,
+        assets={"cog": pystac.Asset(href=src_path)},
+        with_raster=True,
+        raster_and_eo_extension_version="v2.0.0",
+    )
+    item.validate()
+    assert item.to_dict()["stac_extensions"] == []
