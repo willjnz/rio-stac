@@ -19,7 +19,7 @@ from rasterio.vrt import WarpedVRT
 # Extension versions rio-stac writes exactly. The last entry is the latest.
 # TODO: Extend these in the next stacked PRs
 EXTENSION_VERSIONS = {
-    "projection": ("v1.1.0",),
+    "projection": ("v1.1.0", "v2.0.0", "v2.1.0"),
     "raster_and_eo": ("v1.1.0",),
 }
 
@@ -32,6 +32,7 @@ DEFAULT_EXTENSION_VERSIONS = {
 }
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
+OGC_CRS84 = rasterio.crs.CRS.from_string("OGC:CRS84")
 
 
 class UnsupportedSTACVersionError(ValueError):
@@ -205,6 +206,29 @@ def get_projection_info(
                 warnings.warn(f"Could not get PROJJSON from dataset : {ex}")
 
     return meta
+
+
+def _projection_fields(info: Dict, crs: Optional[rasterio.crs.CRS], version: str) -> Dict:
+    """Return `proj:` fields from `get_projection_info` output for a projection extension version.
+
+    see: https://github.com/stac-extensions/projection/blob/main/CHANGELOG.md
+
+    """
+    info = dict(info)
+
+    # v2.0.0 replaced `proj:epsg` with `proj:code`.
+    if version in ("v2.0.0", "v2.1.0"):
+        # Only EPSG codes are written. Other authorities (e.g. ESRI, IAU) could use
+        # `crs.to_authority()`, accepted only if the code rebuilds an equal CRS.
+        epsg = info.pop("epsg")
+        info = {"code": f"EPSG:{epsg}" if epsg else None, **info}
+
+    # v2.1.0: `proj:bbox` and `proj:geometry` should be omitted if the CRS is WGS 84.
+    if version == "v2.1.0" and crs is not None and crs in (EPSG_4326, OGC_CRS84):
+        info.pop("bbox")
+        info.pop("geometry")
+
+    return {f"proj:{name}": value for name, value in info.items()}
 
 
 def get_eobands_info(
@@ -501,10 +525,9 @@ def create_stac_item(
             extensions.append(_extension_url("projection", proj_version))
 
             properties.update(
-                {
-                    f"proj:{name}": value
-                    for name, value in get_projection_info(src_dst).items()
-                }
+                _projection_fields(
+                    get_projection_info(src_dst), src_dst.crs, proj_version
+                )
             )
 
         # add raster properties

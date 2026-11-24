@@ -423,3 +423,51 @@ def test_stats_with_nan_missing_nodata():
         info = get_raster_info(src)
         assert info[0]["statistics"]["minimum"] > 0
         assert info[0]["statistics"]["maximum"] > 0
+
+
+def test_create_item_proj_v2(stac_version):
+    """Projection v2.x writes `proj:code` under STAC 1.0 and 1.1."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    for version in ["v2.0.0", "v2.1.0"]:
+        with warnings.catch_warnings():
+            # v2.0.0 warns it is not the latest version (tested in test_versions.py)
+            warnings.simplefilter("ignore", UserWarning)
+            item = create_stac_item(
+                src_path, with_proj=True, projection_extension_version=version
+            )
+        item.validate()
+        item_dict = item.to_dict()
+        assert item_dict["stac_version"] == stac_version
+        assert item_dict["stac_extensions"] == [
+            f"https://stac-extensions.github.io/projection/{version}/schema.json",
+        ]
+        assert item_dict["properties"]["proj:code"] == "EPSG:32621"
+        assert "proj:epsg" not in item_dict["properties"]
+        with rasterio.open(src_path) as src_dst:
+            assert item_dict["properties"]["proj:bbox"] == list(src_dst.bounds)
+
+    # No EPSG code: `proj:code` is None and the CRS is described by WKT2 or PROJJSON
+    src_path = os.path.join(PREFIX, "dataset_mars.tif")
+    item = create_stac_item(
+        src_path,
+        geographic_crs=rasterio.crs.CRS.from_proj4("+proj=longlat +R=3396190 +no_defs"),
+        with_proj=True,
+        projection_extension_version="v2.1.0",
+    )
+    assert item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["properties"]["proj:code"] is None
+    with rasterio.open(src_path) as src_dst:
+        wkt2 = item_dict["properties"]["proj:wkt2"]
+        assert rasterio.crs.CRS.from_wkt(wkt2) == src_dst.crs
+
+    # WGS 84: v2.1.0 omits `proj:bbox` and `proj:geometry`
+    src_path = os.path.join(PREFIX, "dataset_nodata_nan.tif")
+    item = create_stac_item(
+        src_path, with_proj=True, projection_extension_version="v2.1.0"
+    )
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["properties"]["proj:code"] == "EPSG:4326"
+    assert "proj:bbox" not in item_dict["properties"]
+    assert "proj:geometry" not in item_dict["properties"]

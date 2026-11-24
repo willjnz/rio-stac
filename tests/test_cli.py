@@ -139,7 +139,7 @@ def test_rio_stac_cli_extension_versions(runner):
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
 
     result = runner.invoke(stac, ["--help"])
-    assert "--projection-extension-version [v1.1.0]" in result.output
+    assert "--projection-extension-version [v1.1.0|v2.0.0|v2.1.0]" in result.output
     assert "--raster-and-eo-extension-version [v1.1.0]" in result.output
 
     # The CLI writes the STAC version pystac is set to
