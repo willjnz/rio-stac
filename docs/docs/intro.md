@@ -419,8 +419,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
       ],
       "eo:bands": [
         {
-          "name": "b1",
-          "description": "gray"
+          "name": "b1"
         }
       ],
       "roles": []

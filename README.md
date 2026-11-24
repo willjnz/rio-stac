@@ -288,8 +288,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
       ],
       "eo:bands": [
         {
-          "name": "b1",
-          "description": "gray"
+          "name": "b1"
         }
       ],
       "roles": []

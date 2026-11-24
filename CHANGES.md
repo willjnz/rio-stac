@@ -1,4 +1,8 @@
 
+## Unreleased
+
+* `eo:bands` description no longer falls back to the GDAL colour interpretation when it is `gray` (GDAL's default for single-band data) or `undefined`. Other colour interpretations (e.g. `red`, `nir`, `alpha`) are still used
+
 ## 0.12.0 (2025-09-17)
 
 * remove python 3.9 support

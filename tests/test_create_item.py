@@ -10,6 +10,7 @@ import numpy
 import pystac
 import pytest
 import rasterio
+from rasterio.io import MemoryFile
 
 from rio_stac.stac import create_stac_item, get_raster_info
 
@@ -281,10 +282,8 @@ def test_create_item_eo():
     ]
     assert "eo:bands" in item_dict["assets"]["asset"]
     assert len(item_dict["assets"]["asset"]["eo:bands"]) == 1
-    assert item_dict["assets"]["asset"]["eo:bands"][0] == {
-        "name": "b1",
-        "description": "gray",
-    }
+    # `gray` colour interpretation is not used as a description
+    assert item_dict["assets"]["asset"]["eo:bands"][0] == {"name": "b1"}
 
     src_path = os.path.join(PREFIX, "dataset_description.tif")
     item = create_stac_item(src_path, with_eo=True)
@@ -423,3 +422,34 @@ def test_stats_with_nan_missing_nodata():
         info = get_raster_info(src)
         assert info[0]["statistics"]["minimum"] > 0
         assert info[0]["statistics"]["maximum"] > 0
+
+
+def test_eo_colorinterp_description():
+    """Informative colour interpretations are used as band descriptions."""
+    src_path = os.path.join(PREFIX, "dataset_cloud_date_metadata.tif")
+    item = create_stac_item(src_path, with_eo=True)
+    assert item.validate()
+    assert item.to_dict()["assets"]["asset"]["eo:bands"] == [
+        {"name": "b1", "description": "red"},
+        {"name": "b2", "description": "green"},
+        {"name": "b3", "description": "blue"},
+    ]
+
+    # `gray` and `undefined` (GDAL defaults for a 2-band raster) are not
+    profile = {
+        "driver": "GTiff",
+        "count": 2,
+        "width": 2,
+        "height": 2,
+        "dtype": "uint8",
+        "crs": "EPSG:4326",
+        "transform": rasterio.transform.from_origin(0, 2, 1, 1),
+    }
+    with MemoryFile() as mem, mem.open(**profile) as dst:
+        dst.write(numpy.ones((2, 2, 2), dtype="uint8"))
+        assert [c.name for c in dst.colorinterp] == ["gray", "undefined"]
+        item = create_stac_item(dst, with_eo=True)
+    assert item.to_dict()["assets"]["asset"]["eo:bands"] == [
+        {"name": "b1"},
+        {"name": "b2"},
+    ]
