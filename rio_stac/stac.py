@@ -22,6 +22,10 @@ EO_EXT_VERSION = "v1.1.0"
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
 
+# GDAL colour interpretations that say nothing about a band: `gray` is GDAL's default for
+# single-band data, `undefined` means no interpretation.
+UNINFORMATIVE_COLORINTERP = {"gray", "undefined"}
+
 
 def bbox_to_geom(bbox: Tuple[float, float, float, float]) -> Dict:
     """Return a geojson geometry from a bbox."""
@@ -145,6 +149,8 @@ def get_eobands_info(
 
         descr = src_dst.descriptions[ix - 1]
         color = colors[ix - 1].name
+        if color in UNINFORMATIVE_COLORINTERP:
+            color = None
 
         # Description metadata or Colorinterp or Nothing
         description = descr or color
