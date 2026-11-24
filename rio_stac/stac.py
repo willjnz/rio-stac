@@ -117,7 +117,7 @@ def get_projection_info(
     if not epsg and src_dst.crs:
         # WKT2
         try:
-            meta["wkt2"] = src_dst.crs.to_wkt()
+            meta["wkt2"] = src_dst.crs.to_wkt(version="WKT2_2019")
         except Exception as ex:
             warnings.warn(f"Could not get WKT2 from dataset : {ex}")
             # PROJJSON

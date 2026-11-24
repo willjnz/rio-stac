@@ -1,4 +1,8 @@
 
+## Unreleased
+
+* fix `proj:wkt2`: write WKT2 (`CRS.to_wkt(version="WKT2_2019")`). Released rasterio versions default to WKT1, so `proj:wkt2` held a WKT1 string
+
 ## 0.12.0 (2025-09-17)
 
 * remove python 3.9 support

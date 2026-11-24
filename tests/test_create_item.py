@@ -346,10 +346,8 @@ def test_mars_dataset():
     item_dict = item.to_dict()
 
     assert not item_dict["properties"].get("proj:epsg")
-    assert (
-        "proj:projjson" in item_dict["properties"]
-        or "proj:wkt2" in item_dict["properties"]
-    )
+    # WKT2, not WKT1 (`PROJCS[...]`), the default of released rasterio versions
+    assert item_dict["properties"]["proj:wkt2"].startswith("PROJCRS[")
 
 
 def test_json_serialization():
