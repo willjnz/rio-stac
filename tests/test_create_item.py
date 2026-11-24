@@ -423,3 +423,38 @@ def test_stats_with_nan_missing_nodata():
         info = get_raster_info(src)
         assert info[0]["statistics"]["minimum"] > 0
         assert info[0]["statistics"]["maximum"] > 0
+
+
+@pytest.mark.parametrize(
+    "crs,epsg",
+    [
+        ("EPSG:32621", 32621),
+        # Same CRS as EPSG:32621, not defined by its code
+        ("+proj=utm +zone=21 +datum=WGS84 +units=m +no_defs", 32621),
+        # 70% match with EPSG:3312, which has a datum this CRS doesn't
+        ("+proj=utm +zone=21 +ellps=intl +units=m +no_defs", None),
+    ],
+)
+def test_proj_epsg_exact_match(crs, epsg):
+    """Only write an EPSG code that describes exactly the same CRS."""
+    profile = {
+        "driver": "GTiff",
+        "dtype": "uint8",
+        "count": 1,
+        "height": 10,
+        "width": 10,
+        "crs": crs,
+        "transform": rasterio.transform.from_origin(500000, 8000000, 10, 10),
+    }
+    with rasterio.io.MemoryFile() as mem:
+        with mem.open(**profile) as dst:
+            dst.write(numpy.ones((1, 10, 10), dtype="uint8"))
+        with mem.open() as src_dst:
+            item = create_stac_item(src_dst, input_datetime=input_date, with_proj=True)
+    item.validate()
+    properties = item.to_dict()["properties"]
+    assert properties["proj:epsg"] == epsg
+    if epsg:
+        assert "proj:wkt2" not in properties
+    else:
+        assert properties["proj:wkt2"]

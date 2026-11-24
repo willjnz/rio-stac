@@ -103,8 +103,11 @@ def get_projection_info(
 
     epsg = None
     if src_dst.crs is not None:
-        # EPSG
-        epsg = src_dst.crs.to_epsg() if src_dst.crs.is_epsg_code else None
+        # EPSG: `to_epsg` accepts a 70% confidence match, so only keep a code that
+        # describes exactly the same CRS. Otherwise the CRS is written as WKT2.
+        code = src_dst.crs.to_epsg()
+        if code and rasterio.crs.CRS.from_epsg(code) == src_dst.crs:
+            epsg = code
 
     meta = {
         "epsg": epsg,

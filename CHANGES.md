@@ -1,4 +1,8 @@
 
+## Unreleased
+
+* fix `proj:epsg`: only write an EPSG code that describes exactly the same CRS. `CRS.to_epsg()` accepts a 70% confidence match, so a CRS such as `+proj=utm +zone=21 +ellps=intl` was labelled `EPSG:3312`, a CRS with a different datum. Otherwise `proj:epsg` is `null` and the CRS is written to `proj:wkt2`
+
 ## 0.12.0 (2025-09-17)
 
 * remove python 3.9 support
