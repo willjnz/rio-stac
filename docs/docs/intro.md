@@ -12,6 +12,9 @@ Usage: rio stac [OPTIONS] INPUT
 
   Rasterio STAC plugin: Create a STAC Item for raster dataset.
 
+  The STAC version is the one pystac writes. To write STAC 1.0.0, set
+  PYSTAC_STAC_VERSION_OVERRIDE=1.0.0.
+
 Options:
   -d, --datetime TEXT               The date and time of the assets, in UTC (e.g 2020-01-01, 2020-01-01T01:01:01).
 -e, --extension TEXT                STAC extensions the Item implements (default is set to ["proj"]). Multiple allowed (e.g. `-e extensionUrl1 -e extensionUrl2`).
@@ -25,6 +28,10 @@ Options:
   --with-proj / --without-proj      Add the 'projection' extension and properties (default to True).
   --with-raster / --without-raster  Add the 'raster' extension and properties (default to True).
   --with-eo / --without-eo          Add the 'eo' extension and properties (default to True).
+  --projection-extension-version [v1.1.0]
+                                    'projection' extension version. Defaults to the version matching the STAC version.
+  --raster-and-eo-extension-version [v1.1.0]
+                                    'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the version matching the STAC version.
   --max-raster-size INTEGER         Limit array size from which to get the raster statistics (default to 1024).
   --densify-geom INTEGER            Densifies the number of points on each edges of the polygon geometry to account for non-linear transformation.
   --geom-precision INTEGER          Round geometry coordinates to this number of decimal. By default, coordinates will not be rounded

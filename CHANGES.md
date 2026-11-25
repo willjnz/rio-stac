@@ -1,4 +1,11 @@
 
+## Unreleased
+
+* add `projection_extension_version` and `raster_and_eo_extension_version` options to `create_stac_item`, and `--projection-extension-version` / `--raster-and-eo-extension-version` to the CLI (only `v1.1.0` for now, not yet `v2.0.0`)
+* raise an error when pystac writes a STAC version other than `1.0.0` or `1.1.0`. The STAC version is the one pystac writes (`pystac.set_stac_version()` or `PYSTAC_STAC_VERSION_OVERRIDE`)
+* **breaking**: remove `PROJECTION_EXT_VERSION`, `RASTER_EXT_VERSION` and `EO_EXT_VERSION` constants (see `EXTENSION_VERSIONS` and `DEFAULT_EXTENSION_VERSIONS`)
+* CLI: an unsupported STAC version is shown as a usage error (exit code 2). The error is `UnsupportedSTACVersionError`, a `ValueError` subclass
+
 ## 0.12.0 (2025-09-17)
 
 * remove python 3.9 support

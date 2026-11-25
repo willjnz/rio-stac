@@ -9,6 +9,7 @@ from pystac.utils import datetime_to_str, str_to_datetime
 from rasterio.rio import options
 
 from rio_stac import create_stac_item
+from rio_stac.stac import EXTENSION_VERSIONS, UnsupportedSTACVersionError
 
 
 def _cb_key_val(ctx, param, value):
@@ -89,6 +90,16 @@ def _cb_key_val(ctx, param, value):
     show_default=True,
 )
 @click.option(
+    "--projection-extension-version",
+    type=click.Choice(EXTENSION_VERSIONS["projection"]),
+    help="'projection' extension version. Defaults to the version matching the STAC version.",
+)
+@click.option(
+    "--raster-and-eo-extension-version",
+    type=click.Choice(EXTENSION_VERSIONS["raster_and_eo"]),
+    help="'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the version matching the STAC version.",
+)
+@click.option(
     "--max-raster-size",
     type=int,
     default=1024,
@@ -129,13 +140,18 @@ def stac(
     with_proj,
     with_raster,
     with_eo,
+    projection_extension_version,
+    raster_and_eo_extension_version,
     max_raster_size,
     densify_geom,
     geom_precision,
     output,
     config,
 ):
-    """Rasterio STAC plugin: Create a STAC Item for raster dataset."""
+    """Rasterio STAC plugin: Create a STAC Item for raster dataset.
+
+    The STAC version is the one pystac writes. To write STAC 1.0.0, set PYSTAC_STAC_VERSION_OVERRIDE=1.0.0.
+    """
     property = property or {}
     densify_geom = densify_geom or 0
 
@@ -154,24 +170,29 @@ def stac(
     extensions = [e for e in extension if e]
 
     with rasterio.Env(**config):
-        item = create_stac_item(
-            input,
-            input_datetime=input_datetime,
-            extensions=extensions,
-            collection=collection,
-            collection_url=collection_url,
-            properties=property,
-            id=id,
-            asset_name=asset_name,
-            asset_href=asset_href,
-            asset_media_type=asset_mediatype,
-            with_proj=with_proj,
-            with_raster=with_raster,
-            with_eo=with_eo,
-            raster_max_size=max_raster_size,
-            geom_densify_pts=densify_geom,
-            geom_precision=geom_precision,
-        )
+        try:
+            item = create_stac_item(
+                input,
+                input_datetime=input_datetime,
+                extensions=extensions,
+                collection=collection,
+                collection_url=collection_url,
+                properties=property,
+                id=id,
+                asset_name=asset_name,
+                asset_href=asset_href,
+                asset_media_type=asset_mediatype,
+                with_proj=with_proj,
+                with_raster=with_raster,
+                with_eo=with_eo,
+                raster_max_size=max_raster_size,
+                geom_densify_pts=densify_geom,
+                geom_precision=geom_precision,
+                projection_extension_version=projection_extension_version,
+                raster_and_eo_extension_version=raster_and_eo_extension_version,
+            )
+        except UnsupportedSTACVersionError as e:
+            raise click.UsageError(str(e)) from e
 
     if output:
         with open(output, "w") as f:

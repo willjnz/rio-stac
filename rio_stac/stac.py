@@ -16,11 +16,89 @@ from rasterio.features import bounds as feature_bounds
 from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
 
-PROJECTION_EXT_VERSION = "v1.1.0"
-RASTER_EXT_VERSION = "v1.1.0"
-EO_EXT_VERSION = "v1.1.0"
+# Extension versions rio-stac writes exactly. The last entry is the latest.
+# TODO: Extend these in the next stacked PRs
+EXTENSION_VERSIONS = {
+    "projection": ("v1.1.0",),
+    "raster_and_eo": ("v1.1.0",),
+}
+
+# Default extension versions for each STAC version rio-stac supports.
+# The STAC version itself is chosen by pystac (`pystac.get_stac_version()`), not rio-stac.
+# TODO: Extend these in the next stacked PRs
+DEFAULT_EXTENSION_VERSIONS = {
+    "1.0.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
+    "1.1.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
+}
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
+
+
+class UnsupportedSTACVersionError(ValueError):
+    """pystac writes a STAC version rio-stac doesn't support."""
+
+
+def _extension_url(name: str, version: str) -> str:
+    """Return the schema URL of a STAC extension."""
+    return f"https://stac-extensions.github.io/{name}/{version}/schema.json"
+
+
+def _resolve_versions(
+    with_proj: bool,
+    with_raster: bool,
+    with_eo: bool,
+    projection_extension_version: Optional[str] = None,
+    raster_and_eo_extension_version: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Resolve the extension versions to write, for the STAC version pystac writes.
+
+    Returns (projection version, raster and eo version), with `None` for extensions not requested.
+
+    """
+    stac_version = pystac.get_stac_version()
+    if stac_version not in DEFAULT_EXTENSION_VERSIONS:
+        raise UnsupportedSTACVersionError(
+            f"pystac is writing STAC {stac_version}, but rio-stac only supports STAC "
+            f"{', '.join(DEFAULT_EXTENSION_VERSIONS)}. "
+            f"Use pystac.set_stac_version('1.1.0') or set PYSTAC_STAC_VERSION_OVERRIDE=1.1.0."
+        )
+
+    requested = {
+        "projection": (with_proj, projection_extension_version),
+        "raster_and_eo": (with_raster or with_eo, raster_and_eo_extension_version),
+    }
+    resolved: Dict[str, Optional[str]] = {}
+    for group, (is_requested, version) in requested.items():
+        # Not requested
+        if not is_requested:
+            resolved[group] = None
+            continue
+
+        # Requested but no version passed. Fall back to default based on STAC version
+        if version is None:
+            resolved[group] = DEFAULT_EXTENSION_VERSIONS[stac_version][group]
+            continue
+
+        # Requested and unknown/unsupported version passed. Error.
+        allowed = EXTENSION_VERSIONS[group]
+        if version not in allowed:
+            raise ValueError(
+                f"{group}_extension_version={version!r} is not supported. "
+                f"Allowed values: {', '.join(allowed)}."
+            )
+
+        # Requested an allowed version older than the default for the STAC version. Warn.
+        default = DEFAULT_EXTENSION_VERSIONS[stac_version][group]
+        if allowed.index(version) < allowed.index(default):
+            warnings.warn(
+                f"{group}_extension_version={version!r} is older than the default "
+                f"({default}) for STAC {stac_version}.",
+                UserWarning,
+            )
+
+        resolved[group] = version
+
+    return resolved["projection"], resolved["raster_and_eo"]
 
 
 def bbox_to_geom(bbox: Tuple[float, float, float, float]) -> Dict:
@@ -318,6 +396,8 @@ def create_stac_item(
     with_proj: bool = False,
     with_raster: bool = False,
     with_eo: bool = False,
+    projection_extension_version: Optional[str] = None,
+    raster_and_eo_extension_version: Optional[str] = None,
     raster_max_size: int = 1024,
     geom_densify_pts: int = 0,
     geom_precision: int = -1,
@@ -343,14 +423,30 @@ def create_stac_item(
         with_proj (bool): Add the `projection` extension and properties (default to False).
         with_raster (bool): Add the `raster` extension and properties (default to False).
         with_eo (bool): Add the `eo` extension and properties (default to False).
+        projection_extension_version (str, optional): `projection` extension version (see `EXTENSION_VERSIONS`). Defaults to the version matching the STAC version.
+        raster_and_eo_extension_version (str, optional): `raster` and `eo` extension version (see `EXTENSION_VERSIONS`). Defaults to the version matching the STAC version.
         raster_max_size (int): Limit array size from which to get the raster statistics. Defaults to 1024.
         geom_densify_pts (int): Number of points to add to each edge to account for nonlinear edges transformation (Note: GDAL uses 21).
         geom_precision (int): If >= 0, geometry coordinates will be rounded to this number of decimal.
 
+    The STAC version is the one pystac writes (`pystac.get_stac_version()`). rio-stac has no `stac_version`
+    option because pystac applies its version to the whole process when an item is serialized. To write
+    STAC 1.0, call `pystac.set_stac_version("1.0.0")` or set `PYSTAC_STAC_VERSION_OVERRIDE=1.0.0`.
+    Changing pystac's version after this call can make the item's `stac_version` disagree with its fields.
+    URLs passed in `extensions` are added as given and are not checked against the extension versions.
+
     Returns:
-        pystac.Item: valid STAC Item.
+        pystac.Item: STAC Item, valid for the STAC version pystac reports.
 
     """
+    proj_version, bands_version = _resolve_versions(
+        with_proj,
+        with_raster,
+        with_eo,
+        projection_extension_version,
+        raster_and_eo_extension_version,
+    )
+
     properties = properties or {}
     extensions = extensions or []
     asset_roles = asset_roles or []
@@ -402,9 +498,7 @@ def create_stac_item(
 
         # add projection properties
         if with_proj:
-            extensions.append(
-                f"https://stac-extensions.github.io/projection/{PROJECTION_EXT_VERSION}/schema.json",
-            )
+            extensions.append(_extension_url("projection", proj_version))
 
             properties.update(
                 {
@@ -416,9 +510,7 @@ def create_stac_item(
         # add raster properties
         raster_info = {}
         if with_raster:
-            extensions.append(
-                f"https://stac-extensions.github.io/raster/{RASTER_EXT_VERSION}/schema.json",
-            )
+            extensions.append(_extension_url("raster", bands_version))
 
             raster_info = {
                 "raster:bands": get_raster_info(
@@ -431,9 +523,7 @@ def create_stac_item(
 
         eo_info: Dict[str, List] = {}
         if with_eo:
-            extensions.append(
-                f"https://stac-extensions.github.io/eo/{EO_EXT_VERSION}/schema.json",
-            )
+            extensions.append(_extension_url("eo", bands_version))
 
             eo_info = {"eo:bands": get_eobands_info(src_dst)}
 
