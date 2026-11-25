@@ -1,6 +1,8 @@
 
 ## Unreleased
 
+* **breaking**: write STAC 1.1 items with the raster and eo extensions `v2.0.0` (was `v1.1.0`), and require pystac >= 1.12 (which writes `"stac_version": "1.1.0"`). Band metadata moves from `raster:bands`/`eo:bands` to the STAC 1.1 `bands` array: `name`, `description`, `data_type`, `nodata`, `unit` and `statistics` are core fields, and `scale`, `offset`, `sampling` and `histogram` become `raster:scale`, `raster:offset`, `raster:sampling` and `raster:histogram`. An extension is only declared when one of its fields is written (eo only for `eo:*` fields such as `eo:cloud_cover`; raster and eo are not declared when `assets` is passed). For STAC 1.0 output, use rio-stac 0.12 (closes https://github.com/developmentseed/rio-stac/issues/92)
+* add `get_bands_info` to build the `bands` asset field from `get_raster_info` and `get_eobands_info`
 * **breaking**: write the projection extension `v2.1.0` (was `v1.1.0`). `proj:epsg` (e.g. `32621`) becomes `proj:code` (e.g. `"EPSG:32621"`, or `null` with `proj:wkt2`/`proj:projjson` when there is no EPSG code), and `proj:bbox`/`proj:geometry` are omitted when the CRS is WGS 84. `get_projection_info` returns `code` instead of `epsg` (supersedes https://github.com/developmentseed/rio-stac/pull/66, closes https://github.com/developmentseed/rio-stac/issues/64)
 
 ## 0.12.0 (2025-09-17)

@@ -11,7 +11,7 @@ import pystac
 import pytest
 import rasterio
 
-from rio_stac.stac import create_stac_item, get_raster_info
+from rio_stac.stac import create_stac_item, get_bands_info, get_raster_info
 
 from .conftest import requires_hdf4, requires_hdf5
 
@@ -210,32 +210,28 @@ def test_create_item_raster():
     item_dict = item.to_dict()
     assert item_dict["links"] == []
     assert item_dict["stac_extensions"] == [
-        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
     ]
-    assert "raster:bands" in item_dict["assets"]["asset"]
-    assert len(item_dict["assets"]["asset"]["raster:bands"]) == 1
+    assert len(item_dict["assets"]["asset"]["bands"]) == 1
+    assert item_dict["assets"]["asset"]["bands"][0]["data_type"] == "uint16"
 
     # Nodata=None not in the properties
-    assert "nodata" not in item_dict["assets"]["asset"]["raster:bands"][0]
+    assert "nodata" not in item_dict["assets"]["asset"]["bands"][0]
 
     # Unit=None not in the properties
-    assert "unit" not in item_dict["assets"]["asset"]["raster:bands"][0]
+    assert "unit" not in item_dict["assets"]["asset"]["bands"][0]
 
-    assert item_dict["assets"]["asset"]["raster:bands"][0]["sampling"] in [
-        "point",
-        "area",
-    ]
+    assert item_dict["assets"]["asset"]["bands"][0]["raster:sampling"] == "point"
 
     src_path = os.path.join(PREFIX, "dataset_nodata_nan.tif")
     item = create_stac_item(src_path, input_datetime=input_date, with_raster=True)
     assert item.validate()
     item_dict = item.to_dict()
     assert item_dict["stac_extensions"] == [
-        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
     ]
-    assert "raster:bands" in item_dict["assets"]["asset"]
 
-    assert item_dict["assets"]["asset"]["raster:bands"][0]["nodata"] == "nan"
+    assert item_dict["assets"]["asset"]["bands"][0]["nodata"] == "nan"
 
     src_path = os.path.join(PREFIX, "dataset_with_offsets.tif")
     item = create_stac_item(
@@ -246,11 +242,10 @@ def test_create_item_raster():
     assert item.validate()
     item_dict = item.to_dict()
     assert item_dict["stac_extensions"] == [
-        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
     ]
-    assert "raster:bands" in item_dict["assets"]["asset"]
-    assert item_dict["assets"]["asset"]["raster:bands"][0]["scale"] == 0.0001
-    assert item_dict["assets"]["asset"]["raster:bands"][0]["offset"] == 1000.0
+    assert item_dict["assets"]["asset"]["bands"][0]["raster:scale"] == 0.0001
+    assert item_dict["assets"]["asset"]["bands"][0]["raster:offset"] == 1000.0
 
 
 def test_create_item_raster_with_gcps():
@@ -280,43 +275,42 @@ def test_negative_nodata():
         src_path, input_datetime=input_date, with_raster=True, with_proj=True
     )
     item_dict = item.to_dict()
-    assert item_dict["assets"]["asset"]["raster:bands"][0]["nodata"] == -9999
+    assert item_dict["assets"]["asset"]["bands"][0]["nodata"] == -9999
 
 
 def test_create_item_eo():
-    """Should return a valid item with eo properties."""
+    """Band names and descriptions are core `bands` fields; eo is declared for eo:* fields."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     item = create_stac_item(src_path, with_eo=True)
     assert item.validate()
     item_dict = item.to_dict()
     assert item_dict["links"] == []
-    assert item_dict["stac_extensions"] == [
-        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+    # no eo:* field (no cloud cover), so no eo extension
+    assert item_dict["stac_extensions"] == []
+    assert item_dict["assets"]["asset"]["bands"] == [
+        {"name": "b1", "description": "gray"}
     ]
-    assert "eo:bands" in item_dict["assets"]["asset"]
-    assert len(item_dict["assets"]["asset"]["eo:bands"]) == 1
-    assert item_dict["assets"]["asset"]["eo:bands"][0] == {
-        "name": "b1",
-        "description": "gray",
-    }
 
     src_path = os.path.join(PREFIX, "dataset_description.tif")
     item = create_stac_item(src_path, with_eo=True)
     assert item.validate()
     item_dict = item.to_dict()
-    assert len(item_dict["assets"]["asset"]["eo:bands"]) == 1
-
-    assert item_dict["assets"]["asset"]["eo:bands"][0] == {
-        "name": "b1",
-        "description": "b1",
-    }
+    assert item_dict["assets"]["asset"]["bands"] == [{"name": "b1", "description": "b1"}]
 
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="FALSE"):
         src_path = os.path.join(PREFIX, "dataset_cloud_date_metadata.tif")
         item = create_stac_item(src_path, with_eo=True)
     assert item.validate()
     item_dict = item.to_dict()
-    assert "eo:cloud_cover" in item_dict["properties"]
+    assert item_dict["stac_extensions"] == [
+        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+    ]
+    assert item_dict["properties"]["eo:cloud_cover"] == 2
+    assert item_dict["assets"]["asset"]["bands"] == [
+        {"name": "b1", "description": "red"},
+        {"name": "b2", "description": "green"},
+        {"name": "b3", "description": "blue"},
+    ]
 
 
 def test_create_item_datetime():
@@ -387,8 +381,7 @@ def test_stats_unique_values():
         item = create_stac_item(src_path, with_raster=True)
     assert item.validate()
     item_dict = item.to_dict()
-    assert "raster:bands" in item_dict["assets"]["asset"]
-    stats = item_dict["assets"]["asset"]["raster:bands"][9]["histogram"]
+    stats = item_dict["assets"]["asset"]["bands"][9]["raster:histogram"]
     assert len(stats["buckets"]) == 3
 
     # Should not raise warnings when bins is good
@@ -418,7 +411,7 @@ def test_create_item_raster_custom_histogram():
     )
     assert item.validate()
     item_dict = item.to_dict()
-    stats = item_dict["assets"]["asset"]["raster:bands"][0]["histogram"]
+    stats = item_dict["assets"]["asset"]["bands"][0]["raster:histogram"]
     assert len(stats["buckets"]) == 5
     assert stats["max"] == 10
     assert stats["min"] == 0
@@ -437,3 +430,69 @@ def test_stats_with_nan_missing_nodata():
         info = get_raster_info(src)
         assert info[0]["statistics"]["minimum"] > 0
         assert info[0]["statistics"]["maximum"] > 0
+
+
+def test_get_bands_info():
+    """raster and eo band metadata is merged into STAC 1.1 `bands`, with prefixed raster fields."""
+    raster = [
+        {
+            "data_type": "uint8",
+            "scale": 1.0,
+            "offset": 0.0,
+            "sampling": "area",
+            "nodata": 0,
+            "unit": "m",
+            "statistics": {"minimum": 0},
+            "histogram": {"count": 10},
+        }
+    ]
+    eo = [{"name": "b1", "description": "red"}]
+    assert get_bands_info(raster, eo) == {
+        "bands": [
+            {
+                "name": "b1",
+                "description": "red",
+                "data_type": "uint8",
+                "raster:scale": 1.0,
+                "raster:offset": 0.0,
+                "raster:sampling": "area",
+                "nodata": 0,
+                "unit": "m",
+                "statistics": {"minimum": 0},
+                "raster:histogram": {"count": 10},
+            }
+        ]
+    }
+    # raster only: bands are named b1, b2...
+    assert [band["name"] for band in get_bands_info(raster * 2, [])["bands"]] == [
+        "b1",
+        "b2",
+    ]
+    assert get_bands_info([], []) == {}
+
+
+def test_create_item_assets_no_band_extensions():
+    """When `assets` is passed, no band fields are written, so raster and eo are not declared."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(
+        src_path,
+        assets={"cog": pystac.Asset(href=src_path)},
+        with_raster=True,
+        with_eo=True,
+    )
+    assert item.validate()
+    assert item.to_dict()["stac_extensions"] == []
+
+
+def test_create_item_eo_properties():
+    """The eo extension is declared for eo:* properties passed by the user."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(src_path, properties={"eo:snow_cover": 10}, with_eo=True)
+    assert item.validate()
+    assert item.to_dict()["stac_extensions"] == [
+        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+    ]
+
+    # without `with_eo`, rio-stac doesn't declare it (pass it in `extensions`)
+    item = create_stac_item(src_path, properties={"eo:snow_cover": 10})
+    assert item.to_dict()["stac_extensions"] == []

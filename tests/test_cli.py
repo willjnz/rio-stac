@@ -24,13 +24,13 @@ def test_rio_stac_cli(runner):
         assert stac_item["links"] == []
         assert stac_item["stac_extensions"] == [
             "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-            "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
         ]
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        assert "raster:bands" in stac_item["assets"]["asset"]
-        assert "eo:bands" in stac_item["assets"]["asset"]
+        band = stac_item["assets"]["asset"]["bands"][0]
+        assert band["data_type"] == "uint16"
+        assert band["description"] == "gray"
 
         result = runner.invoke(
             stac,
@@ -105,12 +105,11 @@ def test_rio_stac_cli(runner):
         assert stac_item["links"] == []
         assert stac_item["stac_extensions"] == [
             "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-            "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
         ]
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        assert "raster:bands" in stac_item["assets"]["asset"]
+        assert stac_item["assets"]["asset"]["bands"][0]["data_type"] == "uint16"
 
         with runner.isolated_filesystem():
             src_path = os.path.join(PREFIX, "dataset_nocrs.tif")
@@ -124,11 +123,11 @@ def test_rio_stac_cli(runner):
             assert stac_item["links"] == []
             assert stac_item["stac_extensions"] == [
                 "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-                "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-                "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+                "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
             ]
             assert "datetime" in stac_item["properties"]
             assert stac_item["properties"]["proj:code"] == "EPSG:3035"
             assert "proj:projjson" not in stac_item["properties"]
-            assert "raster:bands" in stac_item["assets"]["asset"]
-            assert "eo:bands" in stac_item["assets"]["asset"]
+            band = stac_item["assets"]["asset"]["bands"][0]
+            assert band["data_type"] == "float32"
+            assert band["description"] == "gray"

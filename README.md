@@ -55,8 +55,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "stac_version": "1.1.0",
   "stac_extensions": [
     "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-    "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
+    "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
   ],
   "id": "dataset_cog.tif",
   "geometry": {
@@ -148,12 +147,14 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "assets": {
     "asset": {
       "href": "/Users/wj/Projects/rio-stac/tests/fixtures/dataset_cog.tif",
-      "raster:bands": [
+      "bands": [
         {
+          "name": "b1",
+          "description": "gray",
           "data_type": "uint16",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "point",
+          "raster:scale": 1.0,
+          "raster:offset": 0.0,
+          "raster:sampling": "point",
           "statistics": {
             "mean": 2107.524612053134,
             "minimum": 1,
@@ -161,7 +162,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
             "stddev": 2271.006553785732,
             "valid_percent": 9.564764936336924e-05
           },
-          "histogram": {
+          "raster:histogram": {
             "count": 11,
             "min": 1.0,
             "max": 7872.0,
@@ -180,17 +181,17 @@ $ pip install git+http://github.com/developmentseed/rio-stac
           }
         }
       ],
-      "eo:bands": [
-        {
-          "name": "b1",
-          "description": "gray"
-        }
-      ],
       "roles": []
     }
   }
 }
 ```
+
+### STAC version
+
+rio-stac writes STAC 1.1 items (it requires pystac >= 1.12, which writes `"stac_version": "1.1.0"`), with the projection `v2.1.0`, raster `v2.0.0` and eo `v2.0.0` extensions. An extension is only declared when one of its fields is written.
+
+rio-stac follows pystac and writes a single layout. To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), use rio-stac 0.12.
 
 See https://developmentseed.org/rio-stac/intro/ for more.
 
