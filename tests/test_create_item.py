@@ -426,7 +426,7 @@ def test_stats_with_nan_missing_nodata():
 
 
 def test_create_item_proj_v2(stac_version):
-    """Projection v2.x writes `proj:code` under STAC 1.0 and 1.1."""
+    """Projection v2.x writes `proj:code: "EPSG:<code>"` under STAC 1.0 and 1.1."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     for version in ["v2.0.0", "v2.1.0"]:
         with warnings.catch_warnings():

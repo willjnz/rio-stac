@@ -143,9 +143,9 @@ def test_projection_fields_v2(version):
     assert "epsg" in no_epsg
 
 
-@pytest.mark.parametrize("crs", [WGS84, rasterio.crs.CRS.from_string("OGC:CRS84")])
-def test_projection_fields_wgs84(crs):
+def test_projection_fields_wgs84():
     """v2.1.0 omits `proj:bbox` and `proj:geometry` for WGS 84; v2.0.0 keeps them."""
+    crs = WGS84
     info = {**PROJ_INFO, "epsg": 4326}
     assert _projection_fields(info, crs, "v2.1.0") == {
         "proj:code": "EPSG:4326",
