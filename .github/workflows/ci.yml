@@ -23,7 +23,7 @@ jobs:
         - '3.13'
         pystac-version: ['']
         include:
-        # pystac <1.12 writes STAC 1.0.0 by default
+        # Also test pystac <1.12 because it writes STAC 1.0.0 by default
         - python-version: '3.13'
           pystac-version: '1.11.*'
 

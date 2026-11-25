@@ -92,12 +92,12 @@ def _cb_key_val(ctx, param, value):
 @click.option(
     "--projection-extension-version",
     type=click.Choice(EXTENSION_VERSIONS["projection"]),
-    help="'projection' extension version. Defaults to the version matching the STAC version.",
+    help="'projection' extension version. Defaults to the latest version compatible with the STAC version.",
 )
 @click.option(
     "--raster-and-eo-extension-version",
     type=click.Choice(EXTENSION_VERSIONS["raster_and_eo"]),
-    help="'raster' and 'eo' extension version. Defaults to the version matching the STAC version.",
+    help="'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the latest version compatible with the STAC version.",
 )
 @click.option(
     "--max-raster-size",
@@ -150,7 +150,7 @@ def stac(
 ):
     """Rasterio STAC plugin: Create a STAC Item for raster dataset.
 
-    The STAC version is the one pystac writes. To write STAC 1.0, set PYSTAC_STAC_VERSION_OVERRIDE=1.0.0.
+    The STAC version is the one pystac writes. To write STAC 1.0.0, set PYSTAC_STAC_VERSION_OVERRIDE=1.0.0.
     """
     property = property or {}
     densify_geom = densify_geom or 0

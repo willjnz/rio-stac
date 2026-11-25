@@ -1,7 +1,6 @@
 """Create STAC Item from a rasterio dataset."""
 
 import datetime
-import logging
 import math
 import os
 import warnings
@@ -17,9 +16,9 @@ from rasterio.features import bounds as feature_bounds
 from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
 
-logger = logging.getLogger(__name__)
 
 # Extension versions rio-stac writes exactly. The last entry is the latest.
+# TODO: Extend these in the next stacked PRs
 EXTENSION_VERSIONS = {
     "projection": ("v1.1.0",),
     "raster_and_eo": ("v1.1.0",),
@@ -27,12 +26,11 @@ EXTENSION_VERSIONS = {
 
 # Default extension versions for each STAC version rio-stac supports.
 # The STAC version itself is chosen by pystac (`pystac.get_stac_version()`), not rio-stac.
+# TODO: Extend these in the next stacked PRs
 DEFAULT_EXTENSION_VERSIONS = {
     "1.0.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
     "1.1.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
 }
-
-STAC_VERSION_OVERRIDE_ENV_VAR = "PYSTAC_STAC_VERSION_OVERRIDE"
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
 
@@ -67,25 +65,26 @@ def _resolve_versions(
         return None, None
 
     stac_version = pystac.get_stac_version()
-    env_version = os.environ.get(STAC_VERSION_OVERRIDE_ENV_VAR)
-    source = f" ({STAC_VERSION_OVERRIDE_ENV_VAR}={env_version})" if env_version else ""
     if stac_version not in DEFAULT_EXTENSION_VERSIONS:
         raise UnsupportedSTACVersionError(
-            f"pystac is writing STAC {stac_version}{source}, but rio-stac only supports STAC "
+            f"pystac is writing STAC {stac_version}, but rio-stac only supports STAC "
             f"{', '.join(DEFAULT_EXTENSION_VERSIONS)} when adding extensions. "
-            f"Use pystac.set_stac_version('1.1.0') or set {STAC_VERSION_OVERRIDE_ENV_VAR}=1.1.0."
+            f"Use pystac.set_stac_version('1.1.0') or set PYSTAC_STAC_VERSION_OVERRIDE=1.1.0."
         )
 
     resolved: Dict[str, Optional[str]] = {}
     for group, (is_requested, version) in requested.items():
+        # Not requested
         if not is_requested:
             resolved[group] = None
             continue
 
+        # Requested but no version passed. Fall back to default based on STAC version
         if version is None:
             resolved[group] = DEFAULT_EXTENSION_VERSIONS[stac_version][group]
             continue
 
+        # Requested and unknown/unsupported version passed. Error.
         allowed = EXTENSION_VERSIONS[group]
         if version not in allowed:
             raise ValueError(
@@ -93,23 +92,16 @@ def _resolve_versions(
                 f"Allowed values: {', '.join(allowed)}."
             )
 
+        # Requested an allowed version that isn't the latest. Warn.
         if version != allowed[-1]:
             warnings.warn(
                 f"{group}_extension_version={version!r} is not the latest version "
                 f"({allowed[-1]}) for STAC {stac_version}.",
                 UserWarning,
-                stacklevel=3,
             )
 
         resolved[group] = version
 
-    logger.debug(
-        "pystac %s writes STAC %s; projection extension %s, raster and eo extensions %s",
-        pystac.__version__,
-        stac_version,
-        resolved["projection"],
-        resolved["raster_and_eo"],
-    )
     return resolved["projection"], resolved["raster_and_eo"]
 
 

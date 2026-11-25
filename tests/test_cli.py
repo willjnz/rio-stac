@@ -141,8 +141,16 @@ def test_rio_stac_cli_extension_versions(runner):
     result = runner.invoke(stac, ["--help"])
     assert "--projection-extension-version [v1.1.0]" in result.output
     assert "--raster-and-eo-extension-version [v1.1.0]" in result.output
-    assert "PYSTAC_STAC_VERSION_OVERRIDE" in result.output
 
+    # The CLI writes the STAC version pystac is set to
+    for version in ["1.0.0", "1.1.0"]:
+        result = runner.invoke(
+            stac, [src_path], env={"PYSTAC_STAC_VERSION_OVERRIDE": version}
+        )
+        assert result.exit_code == 0
+        assert json.loads(result.output)["stac_version"] == version
+
+    # Error for an unknown STAC version
     result = runner.invoke(stac, [src_path, "--projection-extension-version", "v3.0.0"])
     assert result.exit_code == 2
 
