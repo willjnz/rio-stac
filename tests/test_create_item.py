@@ -472,4 +472,5 @@ def test_create_item_proj_v2(stac_version):
     assert "proj:bbox" not in item_dict["properties"]
     assert "proj:geometry" not in item_dict["properties"]
 
+
 # TODO: Add a test for the PROJJSON CRS fallback
