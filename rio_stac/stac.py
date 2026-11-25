@@ -16,7 +16,6 @@ from rasterio.features import bounds as feature_bounds
 from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
 
-
 # Extension versions rio-stac writes exactly. The last entry is the latest.
 # TODO: Extend these in the next stacked PRs
 EXTENSION_VERSIONS = {

@@ -5,10 +5,7 @@ import warnings
 import pystac
 import pytest
 
-from rio_stac.stac import (
-    UnsupportedSTACVersionError,
-    _resolve_versions,
-)
+from rio_stac.stac import UnsupportedSTACVersionError, _resolve_versions
 
 
 @pytest.mark.parametrize(
