@@ -19,7 +19,7 @@ from rasterio.vrt import WarpedVRT
 # Extension versions rio-stac writes exactly. The last entry is the latest.
 EXTENSION_VERSIONS = {
     "projection": ("v1.1.0", "v2.0.0", "v2.1.0"),
-    "raster_and_eo": ("v1.1.0",),  # TODO: Extend this in the next stacked PRs
+    "raster_and_eo": ("v1.1.0", "v2.0.0"),
 }
 
 # Default extension versions for each STAC version rio-stac supports.
@@ -29,6 +29,19 @@ DEFAULT_EXTENSION_VERSIONS = {
     "1.0.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
     "1.1.0": {"projection": "v2.1.0", "raster_and_eo": "v1.1.0"},
 }
+
+_BANDS_SPEC_URL = "https://github.com/radiantearth/stac-spec/blob/v1.1.0/commons/common-metadata.md#bands"
+_BAND_MIGRATION_URL = "https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#band-migration"
+
+# raster v2.0.0 band fields that are prefixed (the others are STAC 1.1 core fields).
+_RASTER_V2_RENAMES = {
+    "scale": "raster:scale",
+    "offset": "raster:offset",
+    "sampling": "raster:sampling",
+    "histogram": "raster:histogram",
+}
+# Band fields that stay in `bands` even when all bands have the same value.
+_NEVER_SHARED = {"name", "description", "statistics", "raster:histogram"}
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
 
@@ -85,6 +98,17 @@ def _resolve_versions(
                 f"{group}_extension_version={version!r} is not supported. "
                 f"Allowed values: {', '.join(allowed)}."
             )
+
+        # raster and eo v2.0.0 use `bands`, a STAC 1.1 core field. Warn and fall back to v1.1.0.
+        if group == "raster_and_eo" and stac_version == "1.0.0" and version == "v2.0.0":
+            warnings.warn(
+                f"raster_and_eo_extension_version={version!r} writes the STAC 1.1 `bands` field, "
+                f"but pystac is writing STAC {stac_version}, so rio-stac writes 'v1.1.0' "
+                f"instead. To write {version!r}, let pystac write STAC 1.1.0. "
+                f"See {_BANDS_SPEC_URL} and {_BAND_MIGRATION_URL}",
+                UserWarning,
+            )
+            version = "v1.1.0"
 
         # Requested an allowed version older than the default for the STAC version. Warn.
         default = DEFAULT_EXTENSION_VERSIONS[stac_version][group]
@@ -227,6 +251,84 @@ def _projection_fields(info: Dict, crs: Optional[rasterio.crs.CRS], version: str
 
     # v1.1.0: fields are written as `get_projection_info` returns them (`"proj:epsg": int`).
     return {f"proj:{name}": value for name, value in info.items()}
+
+
+def _band_fields(raster_bands: List[Dict], eo_bands: List[Dict], version: str) -> Dict:
+    """Return asset fields from `get_raster_info` and `get_eobands_info` output for a raster/eo extension version.
+
+    v1.1.0 writes `raster:bands` and `eo:bands`. v2.0.0 merges them into one STAC 1.1 `bands` array, with
+    values shared by all bands moved to the asset, and a single band written directly on the asset.
+
+    see: https://github.com/radiantearth/stac-spec/blob/master/best-practices.md#bands
+
+    """
+    if version == "v1.1.0":
+        fields: Dict = {}
+        if raster_bands:
+            fields["raster:bands"] = raster_bands
+        if eo_bands:
+            fields["eo:bands"] = eo_bands
+        return fields
+
+    bands = []
+    for ix in range(max(len(raster_bands), len(eo_bands))):
+        band: Dict = {"name": f"b{ix + 1}"}
+        if eo_bands:
+            band.update(eo_bands[ix])
+        if raster_bands:
+            band.update(
+                {_RASTER_V2_RENAMES.get(k, k): v for k, v in raster_bands[ix].items()}
+            )
+        bands.append(band)
+
+    if not bands:
+        return {}
+
+    # A single band goes on the asset. `name` is only allowed in bands.
+    if len(bands) == 1:
+        fields = bands[0]
+        fields.pop("name")
+        return fields
+
+    shared = {
+        key: value
+        for key, value in bands[0].items()
+        if key not in _NEVER_SHARED
+        and all(key in band and band[key] == value for band in bands)
+    }
+    for band in bands:
+        for key in shared:
+            del band[key]
+
+    return {**shared, "bands": bands}
+
+
+def _band_extensions(
+    version: str, with_raster: bool, with_eo: bool, band_fields: Dict, properties: Dict
+) -> List[str]:
+    """Return the raster and eo extension URLs for the written band fields and item properties.
+
+    v1.1.0 declares every requested extension, as before. v2.0.0 declares an extension only if one of
+    its prefixed fields is written, because the extension schemas require at least one.
+
+    """
+    if version == "v1.1.0":
+        names = [
+            name for name, used in [("raster", with_raster), ("eo", with_eo)] if used
+        ]
+    else:
+        keys = {
+            key
+            for fields in [band_fields, *band_fields.get("bands", [])]
+            for key in fields
+        }
+        names = []
+        if any(key.startswith("raster:") for key in keys):
+            names.append("raster")
+        if with_eo and any(key.startswith("eo:") for key in [*keys, *properties]):
+            names.append("eo")
+
+    return [_extension_url(name, version) for name in names]
 
 
 def get_eobands_info(
@@ -529,28 +631,36 @@ def create_stac_item(
             )
 
         # add raster properties
-        raster_info = {}
+        raster_bands: List[Dict] = []
         if with_raster:
-            extensions.append(_extension_url("raster", bands_version))
+            raster_bands = get_raster_info(
+                dataset,
+                max_size=raster_max_size,
+                histogram_bins=histogram_bins,
+                histogram_range=histogram_range,
+            )
 
-            raster_info = {
-                "raster:bands": get_raster_info(
-                    dataset,
-                    max_size=raster_max_size,
-                    histogram_bins=histogram_bins,
-                    histogram_range=histogram_range,
-                )
-            }
-
-        eo_info: Dict[str, List] = {}
+        eo_bands: List[Dict] = []
         if with_eo:
-            extensions.append(_extension_url("eo", bands_version))
-
-            eo_info = {"eo:bands": get_eobands_info(src_dst)}
+            eo_bands = get_eobands_info(src_dst)
 
             cloudcover = src_dst.get_tag_item("CLOUDCOVER", "IMAGERY")
             if cloudcover is not None:
                 properties.update({"eo:cloud_cover": int(cloudcover)})
+
+    band_fields: Dict = {}
+    if bands_version:
+        band_fields = _band_fields(raster_bands, eo_bands, bands_version)
+        # Band fields are dropped when `assets` is passed.
+        extensions.extend(
+            _band_extensions(
+                bands_version,
+                with_raster,
+                with_eo,
+                {} if assets else band_fields,
+                properties,
+            )
+        )
 
     # item
     item = pystac.Item(
@@ -584,7 +694,7 @@ def create_stac_item(
             asset=pystac.Asset(
                 href=asset_href or dataset.name,
                 media_type=media_type,
-                extra_fields={**raster_info, **eo_info},
+                extra_fields=band_fields,
                 roles=asset_roles,
             ),
         )

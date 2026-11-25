@@ -8,6 +8,7 @@
 * **breaking**: remove `PROJECTION_EXT_VERSION`, `RASTER_EXT_VERSION` and `EO_EXT_VERSION` constants (see `EXTENSION_VERSIONS` and `DEFAULT_EXTENSION_VERSIONS`)
 * CLI: an unsupported STAC version is shown as a usage error (exit code 2). The error is `UnsupportedSTACVersionError`, a `ValueError` subclass
 * add projection extension `v2.0.0` and `v2.1.0` (`projection_extension_version`). They write `proj:code` (`"EPSG:{code}"`, or `null` with `proj:wkt2`/`proj:projjson` when there is no EPSG code) instead of `proj:epsg`. `v2.1.0` omits `proj:bbox` and `proj:geometry` when the CRS is WGS 84 (supersedes https://github.com/developmentseed/rio-stac/pull/66)
+* add raster and eo extension `v2.0.0` (`raster_and_eo_extension_version`, STAC 1.1 only). Band metadata is written to the STAC 1.1 `bands` array instead of `raster:bands`/`eo:bands`: values shared by all bands are set on the asset, a single band is written directly on the asset, and `scale`, `offset`, `sampling` and `histogram` become `raster:`-prefixed. An extension is only declared when one of its fields is written (with no `eo:common_name`, eo `v2.0.0` is declared only when an `eo:*` field such as `eo:cloud_cover` is written). Under STAC 1.0 it falls back to `v1.1.0` with a warning. Default is unchanged (`v1.1.0`)
 
 ## 0.12.0 (2025-09-17)
 
