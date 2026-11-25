@@ -481,7 +481,9 @@ def create_stac_item(
             extensions.append(
                 f"https://stac-extensions.github.io/raster/{RASTER_EXT_VERSION}/schema.json",
             )
-        if with_eo and any(key.startswith("eo:") for key in [*band_keys, *properties]):
+        # rio-stac writes no eo:* band fields (`name` and `description` are core), so eo is only declared
+        # for eo:* item properties: `eo:cloud_cover` from GDAL metadata, or ones passed in `properties`.
+        if with_eo and any(key.startswith("eo:") for key in properties):
             extensions.append(
                 f"https://stac-extensions.github.io/eo/{EO_EXT_VERSION}/schema.json",
             )

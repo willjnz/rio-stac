@@ -140,6 +140,17 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     Note: `GDAL Raster data model` metadata are stored in an external file so you may want to set `GDAL_DISABLE_READDIR_ON_OPEN=FALSE` environment variable to allow GDAL to fetch the sidecar files.
 
+    The cloud cover is the `CLOUDCOVER` item of GDAL's [IMAGERY metadata domain](https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing). GDAL fills it from sensor metadata files next to the image, e.g. the DigitalGlobe (WorldView) `.xml` next to `tests/fixtures/dataset_cloud_date_metadata.tif`:
+
+    ```bash
+    $ GDAL_DISABLE_READDIR_ON_OPEN=FALSE rio info --tags --namespace IMAGERY tests/fixtures/dataset_cloud_date_metadata.tif
+    {"ACQUISITIONDATETIME": "2011-05-01 13:00:00", "CLOUDCOVER": "2", "SATELLITEID": "WV03"}
+    ```
+
+    You can also set it on a GeoTIFF yourself, e.g. with rasterio: `dst.update_tags(ns="IMAGERY", CLOUDCOVER=2)`.
+
+    Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`; the `eo` extension is declared for them too.
+
 - **collection** (-c, --collection)
 
     Add a `collection` attribute to the item.

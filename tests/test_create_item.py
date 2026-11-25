@@ -482,3 +482,17 @@ def test_create_item_assets_no_band_extensions():
     )
     assert item.validate()
     assert item.to_dict()["stac_extensions"] == []
+
+
+def test_create_item_eo_properties():
+    """The eo extension is declared for eo:* properties passed by the user."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(src_path, properties={"eo:snow_cover": 10}, with_eo=True)
+    assert item.validate()
+    assert item.to_dict()["stac_extensions"] == [
+        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+    ]
+
+    # without `with_eo`, rio-stac doesn't declare it (pass it in `extensions`)
+    item = create_stac_item(src_path, properties={"eo:snow_cover": 10})
+    assert item.to_dict()["stac_extensions"] == []
