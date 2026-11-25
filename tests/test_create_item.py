@@ -185,7 +185,8 @@ def test_proj_without_proj(stac_version):
     assert item_dict["properties"]["proj:bbox"]
 
 
-def test_create_item_raster():
+@stac_1_0
+def test_create_item_raster(stac_version):
     """Should return a valid item with raster properties."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     item = create_stac_item(
@@ -261,7 +262,8 @@ def test_dateline_polygon_split():
     assert item_dict["geometry"]["type"] == "MultiPolygon"
 
 
-def test_negative_nodata():
+@stac_1_0
+def test_negative_nodata(stac_version):
     """Make sure we catch valid nodata (issue 33)."""
     src_path = os.path.join(PREFIX, "dataset_int16_nodata.tif")
     item = create_stac_item(
@@ -271,7 +273,8 @@ def test_negative_nodata():
     assert item_dict["assets"]["asset"]["raster:bands"][0]["nodata"] == -9999
 
 
-def test_create_item_eo():
+@stac_1_0
+def test_create_item_eo(stac_version):
     """Should return a valid item with eo properties."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     item = create_stac_item(src_path, with_eo=True)
@@ -364,7 +367,8 @@ def test_json_serialization():
 
 
 @pytest.mark.xfail(sys.version_info < (3, 10), reason="Old numpy do not raise error")
-def test_stats_unique_values():
+@stac_1_0
+def test_stats_unique_values(stac_version):
     """issue 68 -
     ref: https://github.com/developmentseed/rio-stac/issues/68
     """
@@ -393,7 +397,8 @@ def test_stats_unique_values():
         create_stac_item(src_path, with_raster=True, histogram_range=(0, -1))
 
 
-def test_create_item_raster_custom_histogram():
+@stac_1_0
+def test_create_item_raster_custom_histogram(stac_version):
     """Should return a valid item with raster properties."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     item = create_stac_item(
@@ -473,62 +478,6 @@ def test_create_item_proj_v2(stac_version):
 
 
 # TODO: Add a test for the PROJJSON CRS fallback
-
-
-@stac_1_0
-def test_reproduce_012_output(stac_version):
-    """With STAC 1.0 and no version options, the output has the same fields as rio-stac 0.12."""
-    src_path = os.path.join(PREFIX, "dataset_cog.tif")
-    item = create_stac_item(src_path, with_proj=True, with_raster=True, with_eo=True)
-    assert item.validate()
-    item_dict = item.to_dict()
-    assert item_dict["stac_version"] == "1.0.0"
-    assert item_dict["stac_extensions"] == [
-        "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-    ]
-    assert list(item_dict["properties"]) == [
-        "proj:epsg",
-        "proj:geometry",
-        "proj:bbox",
-        "proj:shape",
-        "proj:transform",
-        "datetime",
-    ]
-    assert list(item_dict["assets"]["asset"]) == [
-        "href",
-        "type",
-        "raster:bands",
-        "eo:bands",
-        "roles",
-    ]
-
-
-@stac_1_1
-def test_proj_defaults_stac_1_1(stac_version):
-    """Projection defaults to v2.1.0 under STAC 1.1."""
-    src_path = os.path.join(PREFIX, "dataset.tif")
-    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
-    item.validate()
-    item_dict = item.to_dict()
-    assert item_dict["stac_extensions"] == [
-        "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    ]
-    # No CRS: no code, and not WGS 84 so `proj:bbox` is kept
-    assert item_dict["properties"]["proj:code"] is None
-    assert "proj:epsg" not in item_dict["properties"]
-    with rasterio.open(src_path) as src_dst:
-        assert item_dict["properties"]["proj:bbox"] == list(src_dst.bounds)
-
-    # WGS 84: `proj:bbox` and `proj:geometry` are omitted by default
-    src_path = os.path.join(PREFIX, "dataset_nodata_nan.tif")
-    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
-    item.validate()
-    properties = item.to_dict()["properties"]
-    assert properties["proj:code"] == "EPSG:4326"
-    assert "proj:bbox" not in properties
-    assert "proj:geometry" not in properties
 
 
 @stac_1_1
@@ -613,3 +562,147 @@ def test_create_item_bands_v2(stac_version):
     )
     item.validate()
     assert item.to_dict()["stac_extensions"] == []
+
+
+@stac_1_0
+def test_reproduce_012_output(stac_version):
+    """With STAC 1.0 and no version options, the output has the same fields as rio-stac 0.12."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(src_path, with_proj=True, with_raster=True, with_eo=True)
+    assert item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_version"] == "1.0.0"
+    assert item_dict["stac_extensions"] == [
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+    ]
+    assert list(item_dict["properties"]) == [
+        "proj:epsg",
+        "proj:geometry",
+        "proj:bbox",
+        "proj:shape",
+        "proj:transform",
+        "datetime",
+    ]
+    assert list(item_dict["assets"]["asset"]) == [
+        "href",
+        "type",
+        "raster:bands",
+        "eo:bands",
+        "roles",
+    ]
+
+
+@stac_1_1
+def test_proj_defaults_stac_1_1(stac_version):
+    """Projection defaults to v2.1.0 under STAC 1.1."""
+    src_path = os.path.join(PREFIX, "dataset.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == [
+        "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
+    ]
+    # No CRS: no code, and not WGS 84 so `proj:bbox` is kept
+    assert item_dict["properties"]["proj:code"] is None
+    assert "proj:epsg" not in item_dict["properties"]
+    with rasterio.open(src_path) as src_dst:
+        assert item_dict["properties"]["proj:bbox"] == list(src_dst.bounds)
+
+    # WGS 84: `proj:bbox` and `proj:geometry` are omitted by default
+    src_path = os.path.join(PREFIX, "dataset_nodata_nan.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
+    item.validate()
+    properties = item.to_dict()["properties"]
+    assert properties["proj:code"] == "EPSG:4326"
+    assert "proj:bbox" not in properties
+    assert "proj:geometry" not in properties
+
+
+@stac_1_1
+def test_create_item_raster_stac_1_1(stac_version):
+    """Raster defaults to v2.0.0 under STAC 1.1, with single-band fields on the asset."""
+    raster_url = "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
+
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(
+        src_path, input_datetime=input_date, with_raster=True, raster_max_size=128
+    )
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == [raster_url]
+    asset = item_dict["assets"]["asset"]
+    assert "bands" not in asset
+    assert "nodata" not in asset
+    assert "unit" not in asset
+    assert asset["raster:sampling"] == "point"
+
+    src_path = os.path.join(PREFIX, "dataset_nodata_nan.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_raster=True)
+    item.validate()
+    assert item.to_dict()["assets"]["asset"]["nodata"] == "nan"
+
+    src_path = os.path.join(PREFIX, "dataset_int16_nodata.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_raster=True)
+    assert item.to_dict()["assets"]["asset"]["nodata"] == -9999
+
+    src_path = os.path.join(PREFIX, "dataset_with_offsets.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_raster=True)
+    item.validate()
+    asset = item.to_dict()["assets"]["asset"]
+    assert asset["raster:scale"] == 0.0001
+    assert asset["raster:offset"] == 1000.0
+
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(
+        src_path,
+        input_datetime=input_date,
+        with_raster=True,
+        raster_max_size=128,
+        histogram_bins=5,
+        histogram_range=[0, 10],
+    )
+    stats = item.to_dict()["assets"]["asset"]["raster:histogram"]
+    assert len(stats["buckets"]) == 5
+    assert stats["max"] == 10
+    assert stats["min"] == 0
+
+    src_path = os.path.join(
+        PREFIX, "S2A_MSIL2A_20220722T105631_N0400_R094_T31TCN_20220722T171159.tif"
+    )
+    with pytest.warns(UserWarning):
+        item = create_stac_item(src_path, with_raster=True)
+    stats = item.to_dict()["assets"]["asset"]["bands"][9]["raster:histogram"]
+    assert len(stats["buckets"]) == 3
+
+
+@stac_1_1
+def test_create_item_eo_stac_1_1(stac_version):
+    """eo defaults to v2.0.0 under STAC 1.1 and is only declared for eo:* fields."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(src_path, with_eo=True)
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == []
+    assert item_dict["assets"]["asset"]["description"] == "gray"
+    assert "eo:bands" not in item_dict["assets"]["asset"]
+
+    src_path = os.path.join(PREFIX, "dataset_description.tif")
+    item = create_stac_item(src_path, with_eo=True)
+    assert item.to_dict()["assets"]["asset"]["description"] == "b1"
+
+    with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="FALSE"):
+        src_path = os.path.join(PREFIX, "dataset_cloud_date_metadata.tif")
+        item = create_stac_item(src_path, with_eo=True)
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == [
+        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+    ]
+    assert item_dict["properties"]["eo:cloud_cover"] == 2
+    assert item_dict["assets"]["asset"]["bands"] == [
+        {"name": "b1", "description": "red"},
+        {"name": "b2", "description": "green"},
+        {"name": "b3", "description": "blue"},
+    ]

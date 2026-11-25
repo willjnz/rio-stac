@@ -23,7 +23,7 @@ PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 
 @pytest.mark.parametrize(
     "stac_version,expected",
-    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v2.1.0", "v1.1.0"))],
+    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v2.1.0", "v2.0.0"))],
     indirect=["stac_version"],
 )
 def test_defaults(stac_version, expected):
@@ -46,8 +46,9 @@ def test_not_requested(stac_version):
     assert (
         _resolve_versions(False, True, False, "v9.9.9", None)[0] is None
     )  # Same as above but for proj
+    bands_default = {"1.0.0": "v1.1.0", "1.1.0": "v2.0.0"}[stac_version]
     assert (
-        _resolve_versions(False, False, True)[1] == "v1.1.0"
+        _resolve_versions(False, False, True)[1] == bands_default
     )  # Just eo returns the shared eo/raster version
 
 

@@ -55,8 +55,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "stac_version": "1.1.0",
   "stac_extensions": [
     "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-    "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
+    "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
   ],
   "id": "dataset_cog.tif",
   "geometry": {
@@ -148,44 +147,35 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "assets": {
     "asset": {
       "href": "/Users/wj/Projects/rio-stac/tests/fixtures/dataset_cog.tif",
-      "raster:bands": [
-        {
-          "data_type": "uint16",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "point",
-          "statistics": {
-            "mean": 2107.524612053134,
-            "minimum": 1,
-            "maximum": 7872,
-            "stddev": 2271.006553785732,
-            "valid_percent": 9.564764936336924e-05
-          },
-          "histogram": {
-            "count": 11,
-            "min": 1.0,
-            "max": 7872.0,
-            "buckets": [
-              503460,
-              0,
-              0,
-              161792,
-              283094,
-              0,
-              0,
-              0,
-              87727,
-              9431
-            ]
-          }
-        }
-      ],
-      "eo:bands": [
-        {
-          "name": "b1",
-          "description": "gray"
-        }
-      ],
+      "description": "gray",
+      "data_type": "uint16",
+      "raster:scale": 1.0,
+      "raster:offset": 0.0,
+      "raster:sampling": "point",
+      "statistics": {
+        "mean": 2107.524612053134,
+        "minimum": 1,
+        "maximum": 7872,
+        "stddev": 2271.006553785732,
+        "valid_percent": 9.564764936336924e-05
+      },
+      "raster:histogram": {
+        "count": 11,
+        "min": 1.0,
+        "max": 7872.0,
+        "buckets": [
+          503460,
+          0,
+          0,
+          161792,
+          283094,
+          0,
+          0,
+          0,
+          87727,
+          9431
+        ]
+      },
       "roles": []
     }
   }
@@ -201,14 +191,16 @@ The extension versions default to the version matching the STAC version, and can
 | Extension | Allowed | Default with STAC 1.0.0 | Default with STAC 1.1.0 |
 | --- | --- | --- | --- |
 | [projection](https://github.com/stac-extensions/projection) | `v1.1.0`, `v2.0.0`, `v2.1.0` | `v1.1.0` | `v2.1.0` |
-| [raster](https://github.com/stac-extensions/raster) and [eo](https://github.com/stac-extensions/eo) | `v1.1.0`, `v2.0.0` (STAC 1.1.0 only, falls back to `v1.1.0` with a warning under STAC 1.0.0) | `v1.1.0` | `v1.1.0` |
+| [raster](https://github.com/stac-extensions/raster) and [eo](https://github.com/stac-extensions/eo) | `v1.1.0`, `v2.0.0` (STAC 1.1.0 only, falls back to `v1.1.0` with a warning under STAC 1.0.0) | `v1.1.0` | `v2.0.0` |
 
 Only released versions that rio-stac writes exactly are accepted. Choosing a version older than the default for the STAC version warns.
 
-| Environment | `stac_version` | Projection |
-| --- | --- | --- |
-| pystac >= 1.12 (default) | `1.1.0` | `"proj:code": "EPSG:32621"`, no `proj:bbox`/`proj:geometry` for WGS 84 |
-| pystac >= 1.12 with `PYSTAC_STAC_VERSION_OVERRIDE=1.0.0`, or pystac <= 1.11 | `1.0.0` | `"proj:epsg": 32621` (same as rio-stac 0.12) |
+| Environment | `stac_version` | Projection | Band metadata |
+| --- | --- | --- | --- |
+| pystac >= 1.12 (default) | `1.1.0` | `"proj:code": "EPSG:32621"`, no `proj:bbox`/`proj:geometry` for WGS 84 | `bands` (shared values on the asset), or directly on the asset for a single band |
+| pystac >= 1.12 with `PYSTAC_STAC_VERSION_OVERRIDE=1.0.0`, or pystac <= 1.11 | `1.0.0` | `"proj:epsg": 32621` | `raster:bands`, `eo:bands` (same as rio-stac 0.12) |
+
+An extension is only declared when one of its fields is written. With raster/eo `v2.0.0`, the band `name` and `description` are STAC 1.1 core fields, so eo is only declared when an `eo:*` field such as `eo:cloud_cover` is written.
 
 To get the same output as rio-stac 0.12, write STAC 1.0:
 

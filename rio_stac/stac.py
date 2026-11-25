@@ -24,10 +24,9 @@ EXTENSION_VERSIONS = {
 
 # Default extension versions for each STAC version rio-stac supports.
 # The STAC version itself is chosen by pystac (`pystac.get_stac_version()`), not rio-stac.
-# TODO: Update these in the next stacked PRs
 DEFAULT_EXTENSION_VERSIONS = {
     "1.0.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
-    "1.1.0": {"projection": "v2.1.0", "raster_and_eo": "v1.1.0"},
+    "1.1.0": {"projection": "v2.1.0", "raster_and_eo": "v2.0.0"},
 }
 
 _BANDS_SPEC_URL = "https://github.com/radiantearth/stac-spec/blob/v1.1.0/commons/common-metadata.md#bands"
