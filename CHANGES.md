@@ -1,4 +1,8 @@
 
+## Unreleased
+
+* **breaking**: write the projection extension `v2.1.0` (was `v1.1.0`). `proj:epsg` (e.g. `32621`) becomes `proj:code` (e.g. `"EPSG:32621"`, or `null` with `proj:wkt2`/`proj:projjson` when there is no EPSG code), and `proj:bbox`/`proj:geometry` are omitted when the CRS is WGS 84. `get_projection_info` returns `code` instead of `epsg` (supersedes https://github.com/developmentseed/rio-stac/pull/66, closes https://github.com/developmentseed/rio-stac/issues/64)
+
 ## 0.12.0 (2025-09-17)
 
 * remove python 3.9 support

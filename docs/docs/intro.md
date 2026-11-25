@@ -59,7 +59,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     ```json
     {
-        "proj:epsg": 3857,
+        "proj:code": "EPSG:3857",
         "proj:geometry": {"type": "Polygon", "coordinates": [...]},
         "proj:bbox": [...],
         "proj:shape": [8192, 8192],
@@ -67,6 +67,8 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         "datetime": "2021-03-19T02:27:33.266356Z"
     }
     ```
+
+    rio-stac writes projection `v2.1.0`: `"proj:code": "EPSG:3857"` (or `null`, with `proj:wkt2` or `proj:projjson`, when there is no EPSG code), and no `proj:bbox`/`proj:geometry` when the CRS is WGS 84.
 
     You can pass `--without-proj` to disable it.
 
@@ -185,7 +187,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "type": "Feature",
   "stac_version": "1.1.0",
   "stac_extensions": [
-    "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
     "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
     "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
   ],
@@ -224,7 +226,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     74.62204314252978
   ],
   "properties": {
-    "proj:epsg": 32621,
+    "proj:code": "EPSG:32621",
     "proj:geometry": {
       "type": "Polygon",
       "coordinates": [
@@ -336,7 +338,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "type": "Feature",
   "stac_version": "1.1.0",
   "stac_extensions": [
-    "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
     "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
     "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
   ],
@@ -376,40 +378,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   ],
   "properties": {
     "comments:name": "myfile",
-    "proj:epsg": 4326,
-    "proj:geometry": {
-      "type": "Polygon",
-      "coordinates": [
-        [
-          [
-            -44.84032,
-            -23.104184
-          ],
-          [
-            -44.66872,
-            -23.104184
-          ],
-          [
-            -44.66872,
-            -22.932584
-          ],
-          [
-            -44.84032,
-            -22.932584
-          ],
-          [
-            -44.84032,
-            -23.104184
-          ]
-        ]
-      ]
-    },
-    "proj:bbox": [
-      -44.84032,
-      -23.104184,
-      -44.66872,
-      -22.932584
-    ],
+    "proj:code": "EPSG:4326",
     "proj:shape": [
       50,
       50
