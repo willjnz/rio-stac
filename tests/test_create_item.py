@@ -429,12 +429,9 @@ def test_create_item_proj_v2(stac_version):
     """Projection v2.x writes `proj:code: "EPSG:<code>"` under STAC 1.0 and 1.1."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     for version in ["v2.0.0", "v2.1.0"]:
-        with warnings.catch_warnings():
-            # v2.0.0 warns it is not the latest version (tested in test_versions.py)
-            warnings.simplefilter("ignore", UserWarning)
-            item = create_stac_item(
-                src_path, with_proj=True, projection_extension_version=version
-            )
+        item = create_stac_item(
+            src_path, with_proj=True, projection_extension_version=version
+        )
         item.validate()
         item_dict = item.to_dict()
         assert item_dict["stac_version"] == stac_version

@@ -70,21 +70,15 @@ def test_unknown_extension_version(stac_version, version):
         _resolve_versions(False, True, False, raster_and_eo_extension_version=version)
 
 
-def test_explicit_default_does_not_warn(stac_version):
-    """An explicit choice of the default version does not warn."""
+@pytest.mark.parametrize("projection", ["v1.1.0", "v2.0.0", "v2.1.0"])
+def test_explicit_default_or_newer_does_not_warn(stac_version, projection):
+    """An explicit choice of the default version (v1.1.0), or a newer one, does not warn."""
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        assert _resolve_versions(True, True, False, "v2.1.0", "v1.1.0") == (
-            "v2.1.0",
+        assert _resolve_versions(True, True, False, projection, "v1.1.0") == (
+            projection,
             "v1.1.0",
         )
-
-
-@pytest.mark.parametrize("version", ["v1.1.0", "v2.0.0"])
-def test_explicit_older_projection_warns(stac_version, version):
-    """An explicit choice of an older projection version warns."""
-    with pytest.warns(UserWarning, match="not the latest version \\(v2.1.0\\)"):
-        assert _resolve_versions(True, False, False, version)[0] == version
 
 
 PROJ_INFO = {
