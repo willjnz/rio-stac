@@ -75,7 +75,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     }
     ```
 
-    The default version is `v1.1.0` (`proj:epsg`). Pass `--projection-extension-version v2.0.0` or `v2.1.0` to write `proj:code` (e.g. `"EPSG:3857"`) instead. `v2.1.0` also leaves out `proj:bbox` and `proj:geometry` when the CRS is WGS 84.
+    The default version is `v1.1.0` (`"proj:epsg": 3857`). Pass `--projection-extension-version v2.0.0` or `v2.1.0` to write `"proj:code": "EPSG:3857"` instead. `v2.1.0` also leaves out `proj:bbox` and `proj:geometry` when the CRS is WGS 84.
 
     You can pass `--without-proj` to disable it.
 
