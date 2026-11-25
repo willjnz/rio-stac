@@ -147,40 +147,35 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "assets": {
     "asset": {
       "href": "/Users/wj/Projects/rio-stac/tests/fixtures/dataset_cog.tif",
-      "bands": [
-        {
-          "name": "b1",
-          "description": "gray",
-          "data_type": "uint16",
-          "raster:scale": 1.0,
-          "raster:offset": 0.0,
-          "raster:sampling": "point",
-          "statistics": {
-            "mean": 2107.524612053134,
-            "minimum": 1,
-            "maximum": 7872,
-            "stddev": 2271.006553785732,
-            "valid_percent": 9.564764936336924e-05
-          },
-          "raster:histogram": {
-            "count": 11,
-            "min": 1.0,
-            "max": 7872.0,
-            "buckets": [
-              503460,
-              0,
-              0,
-              161792,
-              283094,
-              0,
-              0,
-              0,
-              87727,
-              9431
-            ]
-          }
-        }
-      ],
+      "description": "gray",
+      "data_type": "uint16",
+      "raster:scale": 1.0,
+      "raster:offset": 0.0,
+      "raster:sampling": "point",
+      "statistics": {
+        "mean": 2107.524612053134,
+        "minimum": 1,
+        "maximum": 7872,
+        "stddev": 2271.006553785732,
+        "valid_percent": 9.564764936336924e-05
+      },
+      "raster:histogram": {
+        "count": 11,
+        "min": 1.0,
+        "max": 7872.0,
+        "buckets": [
+          503460,
+          0,
+          0,
+          161792,
+          283094,
+          0,
+          0,
+          0,
+          87727,
+          9431
+        ]
+      },
       "roles": []
     }
   }
@@ -189,7 +184,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
 
 ### STAC version
 
-rio-stac writes STAC 1.1 items (it requires pystac >= 1.12, which writes `"stac_version": "1.1.0"`), with the projection `v2.1.0`, raster `v2.0.0` and eo `v2.0.0` extensions. An extension is only declared when one of its fields is written.
+rio-stac writes STAC 1.1 items (it requires pystac >= 1.12, which writes `"stac_version": "1.1.0"`), with the projection `v2.1.0`, raster `v2.0.0` and eo `v2.0.0` extensions. Band metadata follows the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands): values shared by all bands are written on the asset, and a single band is written directly on the asset. An extension is only declared when one of its fields is written.
 
 rio-stac follows pystac and writes a single layout. To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), use rio-stac 0.12.
 

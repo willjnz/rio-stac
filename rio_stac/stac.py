@@ -27,6 +27,12 @@ _RASTER_V2_RENAMES = {
     "sampling": "raster:sampling",
     "histogram": "raster:histogram",
 }
+# Band fields that stay in `bands` even when all bands have the same value: they describe one band, and
+# on the asset they would describe the whole asset instead. A blocklist is safe here because bands only
+# hold the fields `get_eobands_info` (`name`, `description`) and `get_raster_info` (`data_type`, `nodata`,
+# `unit`, `scale`, `offset`, `sampling`, `statistics`, `histogram`) return, and the ones not listed mean
+# the same on the asset. Add any new per-band field here.
+_NEVER_SHARED = {"name", "description", "statistics", "raster:histogram"}
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
 
@@ -176,7 +182,12 @@ def get_bands_info(raster_bands: List[Dict], eo_bands: List[Dict]) -> Dict:
     `data_type`, `nodata`, `unit` and `statistics` are core fields; the other raster fields get the
     `raster:` prefix.
 
-    see: https://github.com/radiantearth/stac-spec/blob/v1.1.0/commons/common-metadata.md#bands
+    Following the STAC best practices, values shared by all bands are written on the asset, and a single
+    band is written directly on the asset (without `name`).
+
+    see:
+    - https://github.com/radiantearth/stac-spec/blob/v1.1.0/commons/common-metadata.md#bands
+    - https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands
 
     """
     bands = []
@@ -190,7 +201,26 @@ def get_bands_info(raster_bands: List[Dict], eo_bands: List[Dict]) -> Dict:
             )
         bands.append(band)
 
-    return {"bands": bands} if bands else {}
+    if not bands:
+        return {}
+
+    # A single band goes on the asset. `name` is only allowed in bands.
+    if len(bands) == 1:
+        fields = bands[0]
+        fields.pop("name")
+        return fields
+
+    shared = {
+        key: value
+        for key, value in bands[0].items()
+        if key not in _NEVER_SHARED
+        and all(key in band and band[key] == value for band in bands)
+    }
+    for band in bands:
+        for key in shared:
+            del band[key]
+
+    return {**shared, "bands": bands}
 
 
 def _get_stats(
