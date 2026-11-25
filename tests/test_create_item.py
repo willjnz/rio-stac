@@ -13,7 +13,7 @@ import rasterio
 
 from rio_stac.stac import create_stac_item, get_raster_info
 
-from .conftest import requires_hdf4, requires_hdf5
+from .conftest import requires_hdf4, requires_hdf5, stac_1_0, stac_1_1
 
 PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 input_date = datetime.datetime.now(datetime.timezone.utc)
@@ -63,7 +63,8 @@ def test_hdf5():
         assert create_stac_item(src_dst, input_datetime=input_date).validate()
 
 
-def test_create_item_options():
+@stac_1_0
+def test_create_item_options(stac_version):
     """Should return the correct mediatype."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
 
@@ -161,7 +162,8 @@ def test_create_item_options():
     assert item_dict["collection"] == "mycollection"
 
 
-def test_proj_without_proj():
+@stac_1_0
+def test_proj_without_proj(stac_version):
     """Use the Proj extension without proj info."""
     src_path = os.path.join(PREFIX, "dataset.tif")
 
@@ -471,3 +473,59 @@ def test_create_item_proj_v2(stac_version):
 
 
 # TODO: Add a test for the PROJJSON CRS fallback
+
+
+@stac_1_0
+def test_reproduce_012_output(stac_version):
+    """With STAC 1.0 and no version options, the output has the same fields as rio-stac 0.12."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(src_path, with_proj=True, with_raster=True, with_eo=True)
+    assert item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_version"] == "1.0.0"
+    assert item_dict["stac_extensions"] == [
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+    ]
+    assert list(item_dict["properties"]) == [
+        "proj:epsg",
+        "proj:geometry",
+        "proj:bbox",
+        "proj:shape",
+        "proj:transform",
+        "datetime",
+    ]
+    assert list(item_dict["assets"]["asset"]) == [
+        "href",
+        "type",
+        "raster:bands",
+        "eo:bands",
+        "roles",
+    ]
+
+
+@stac_1_1
+def test_proj_defaults_stac_1_1(stac_version):
+    """Projection defaults to v2.1.0 under STAC 1.1."""
+    src_path = os.path.join(PREFIX, "dataset.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
+    item.validate()
+    item_dict = item.to_dict()
+    assert item_dict["stac_extensions"] == [
+        "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
+    ]
+    # No CRS: no code, and not WGS 84 so `proj:bbox` is kept
+    assert item_dict["properties"]["proj:code"] is None
+    assert "proj:epsg" not in item_dict["properties"]
+    with rasterio.open(src_path) as src_dst:
+        assert item_dict["properties"]["proj:bbox"] == list(src_dst.bounds)
+
+    # WGS 84: `proj:bbox` and `proj:geometry` are omitted by default
+    src_path = os.path.join(PREFIX, "dataset_nodata_nan.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
+    item.validate()
+    properties = item.to_dict()["properties"]
+    assert properties["proj:code"] == "EPSG:4326"
+    assert "proj:bbox" not in properties
+    assert "proj:geometry" not in properties

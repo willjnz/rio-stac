@@ -27,7 +27,7 @@ EXTENSION_VERSIONS = {
 # TODO: Update these in the next stacked PRs
 DEFAULT_EXTENSION_VERSIONS = {
     "1.0.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
-    "1.1.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
+    "1.1.0": {"projection": "v2.1.0", "raster_and_eo": "v1.1.0"},
 }
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)

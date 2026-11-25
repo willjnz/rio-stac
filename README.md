@@ -54,7 +54,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "type": "Feature",
   "stac_version": "1.1.0",
   "stac_extensions": [
-    "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
     "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
     "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
   ],
@@ -93,7 +93,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
     74.62204314252978
   ],
   "properties": {
-    "proj:epsg": 32621,
+    "proj:code": "EPSG:32621",
     "proj:geometry": {
       "type": "Polygon",
       "coordinates": [
@@ -200,10 +200,21 @@ The extension versions default to the version matching the STAC version, and can
 
 | Extension | Allowed | Default with STAC 1.0.0 | Default with STAC 1.1.0 |
 | --- | --- | --- | --- |
-| [projection](https://github.com/stac-extensions/projection) | `v1.1.0`, `v2.0.0`, `v2.1.0` | `v1.1.0` | `v1.1.0` |
+| [projection](https://github.com/stac-extensions/projection) | `v1.1.0`, `v2.0.0`, `v2.1.0` | `v1.1.0` | `v2.1.0` |
 | [raster](https://github.com/stac-extensions/raster) and [eo](https://github.com/stac-extensions/eo) | `v1.1.0` | `v1.1.0` | `v1.1.0` |
 
 Only released versions that rio-stac writes exactly are accepted. Choosing a version older than the default for the STAC version warns.
+
+| Environment | `stac_version` | Projection |
+| --- | --- | --- |
+| pystac >= 1.12 (default) | `1.1.0` | `"proj:code": "EPSG:32621"`, no `proj:bbox`/`proj:geometry` for WGS 84 |
+| pystac >= 1.12 with `PYSTAC_STAC_VERSION_OVERRIDE=1.0.0`, or pystac <= 1.11 | `1.0.0` | `"proj:epsg": 32621` (same as rio-stac 0.12) |
+
+To get the same output as rio-stac 0.12, write STAC 1.0:
+
+```bash
+$ PYSTAC_STAC_VERSION_OVERRIDE=1.0.0 rio stac tests/fixtures/dataset_cog.tif
+```
 
 URLs passed with `--extension` / `extensions` are added as given and are not checked against these versions.
 

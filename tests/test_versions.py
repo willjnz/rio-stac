@@ -12,10 +12,12 @@ from rio_stac.stac import (
     _resolve_versions,
 )
 
+from .conftest import stac_1_1
+
 
 @pytest.mark.parametrize(
     "stac_version,expected",
-    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v1.1.0", "v1.1.0"))],
+    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v2.1.0", "v1.1.0"))],
     indirect=["stac_version"],
 )
 def test_defaults(stac_version, expected):
@@ -70,15 +72,37 @@ def test_unknown_extension_version(stac_version, version):
         _resolve_versions(False, True, False, raster_and_eo_extension_version=version)
 
 
-@pytest.mark.parametrize("projection", ["v1.1.0", "v2.0.0", "v2.1.0"])
+@pytest.mark.parametrize(
+    "stac_version,projection",
+    [
+        ("1.0.0", "v1.1.0"),
+        ("1.0.0", "v2.0.0"),
+        ("1.0.0", "v2.1.0"),
+        ("1.1.0", "v2.1.0"),
+    ],
+    indirect=["stac_version"],
+)
 def test_explicit_default_or_newer_does_not_warn(stac_version, projection):
-    """An explicit choice of the default version (v1.1.0), or a newer one, does not warn."""
+    """An explicit choice of the default version, or a newer one, does not warn."""
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         assert _resolve_versions(True, True, False, projection, "v1.1.0") == (
             projection,
             "v1.1.0",
         )
+
+
+@stac_1_1
+@pytest.mark.parametrize("version", ["v1.1.0", "v2.0.0"])
+def test_explicit_older_projection_warns(stac_version, version):
+    """Under STAC 1.1, an explicit projection version older than v2.1.0 warns."""
+    with pytest.warns(
+        UserWarning, match=r"older than the default \(v2.1.0\) for STAC 1.1.0"
+    ):
+        versions = _resolve_versions(
+            True, False, False, projection_extension_version=version
+        )
+    assert versions == (version, None)
 
 
 PROJ_INFO = {
