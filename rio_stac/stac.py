@@ -32,7 +32,6 @@ DEFAULT_EXTENSION_VERSIONS = {
 }
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
-OGC_CRS84 = rasterio.crs.CRS.from_string("OGC:CRS84")
 
 
 class UnsupportedSTACVersionError(ValueError):
@@ -223,7 +222,7 @@ def _projection_fields(info: Dict, crs: Optional[rasterio.crs.CRS], version: str
         info = {"code": f"EPSG:{epsg}" if epsg else None, **info}
 
     # v2.1.0: `proj:bbox` and `proj:geometry` should be omitted if the CRS is WGS 84.
-    if version == "v2.1.0" and crs is not None and crs in (EPSG_4326, OGC_CRS84):
+    if version == "v2.1.0" and crs == EPSG_4326:
         info.pop("bbox")
         info.pop("geometry")
 
