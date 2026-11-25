@@ -218,8 +218,7 @@ def _projection_fields(info: Dict, crs: Optional[rasterio.crs.CRS], version: str
 
     # v2.0.0 replaced `proj:epsg` with `proj:code`.
     if version in ("v2.0.0", "v2.1.0"):
-        # Only EPSG codes are written. Other authorities (e.g. ESRI, IAU) could use
-        # `crs.to_authority()`, accepted only if the code rebuilds an equal CRS.
+        # Only EPSG codes are written.
         epsg = info.pop("epsg")
         info = {"code": f"EPSG:{epsg}" if epsg else None, **info}
 
