@@ -446,7 +446,7 @@ def test_create_item_proj_v2(stac_version):
         with rasterio.open(src_path) as src_dst:
             assert item_dict["properties"]["proj:bbox"] == list(src_dst.bounds)
 
-    # No EPSG code: `proj:code` is None and the CRS is described by WKT2 or PROJJSON
+    # No EPSG code: `proj:code` is None and the CRS is written as `proj:wkt2`
     src_path = os.path.join(PREFIX, "dataset_mars.tif")
     item = create_stac_item(
         src_path,
@@ -471,3 +471,5 @@ def test_create_item_proj_v2(stac_version):
     assert item_dict["properties"]["proj:code"] == "EPSG:4326"
     assert "proj:bbox" not in item_dict["properties"]
     assert "proj:geometry" not in item_dict["properties"]
+
+# TODO: Add a test for the PROJJSON CRS fallback
