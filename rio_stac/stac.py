@@ -87,11 +87,12 @@ def _resolve_versions(
                 f"Allowed values: {', '.join(allowed)}."
             )
 
-        # Requested an allowed version that isn't the latest. Warn.
-        if version != allowed[-1]:
+        # Requested an allowed version older than the default for the STAC version. Warn.
+        default = DEFAULT_EXTENSION_VERSIONS[stac_version][group]
+        if allowed.index(version) < allowed.index(default):
             warnings.warn(
-                f"{group}_extension_version={version!r} is not the latest version "
-                f"({allowed[-1]}) for STAC {stac_version}.",
+                f"{group}_extension_version={version!r} is older than the default "
+                f"({default}) for STAC {stac_version}.",
                 UserWarning,
             )
 

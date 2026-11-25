@@ -65,8 +65,8 @@ def test_unknown_extension_version(stac_version, version):
 
 
 # This test is weak, but will become stronger when STAC version v1.1 is supported properly
-def test_explicit_latest_does_not_warn(stac_version):
-    """An explicit choice of the latest version does not warn."""
+def test_explicit_default_does_not_warn(stac_version):
+    """An explicit choice of the default version does not warn."""
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         assert _resolve_versions(True, True, False, "v1.1.0", "v1.1.0") == (

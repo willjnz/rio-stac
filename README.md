@@ -196,14 +196,14 @@ $ pip install git+http://github.com/developmentseed/rio-stac
 
 rio-stac writes the STAC version that [pystac](https://github.com/stac-utils/pystac) writes: pystac 1.12 and later write STAC 1.1.0, older versions write STAC 1.0.0. To choose the version, call `pystac.set_stac_version()` or set `PYSTAC_STAC_VERSION_OVERRIDE`. Other STAC versions raise an error. rio-stac has no `stac_version` option because pystac applies its version to the whole process when an item is serialized ([`pystac.set_stac_version`](https://github.com/stac-utils/pystac/blob/924560a62579c0e84584fab198f96bdb56ad2547/core/pystac/version.py#L6)), so an option could only produce items whose `stac_version` disagrees with their fields.
 
-The extension versions default to the latest version compatible with the STAC version, and can be chosen with `projection_extension_version` / `--projection-extension-version` and `raster_and_eo_extension_version` / `--raster-and-eo-extension-version`:
+The extension versions default to the version matching the STAC version, and can be chosen with `projection_extension_version` / `--projection-extension-version` and `raster_and_eo_extension_version` / `--raster-and-eo-extension-version`:
 
 | Extension | Allowed | Default with STAC 1.0.0 | Default with STAC 1.1.0 |
 | --- | --- | --- | --- |
 | [projection](https://github.com/stac-extensions/projection) | `v1.1.0` | `v1.1.0` | `v1.1.0` |
 | [raster](https://github.com/stac-extensions/raster) and [eo](https://github.com/stac-extensions/eo) | `v1.1.0` | `v1.1.0` | `v1.1.0` |
 
-Only released versions that rio-stac writes exactly are accepted. Choosing a version that is not the latest one for the STAC version warns.
+Only released versions that rio-stac writes exactly are accepted. Choosing a version older than the default for the STAC version warns.
 
 URLs passed with `--extension` / `extensions` are added as given and are not checked against these versions.
 

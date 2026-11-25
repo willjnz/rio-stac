@@ -92,12 +92,12 @@ def _cb_key_val(ctx, param, value):
 @click.option(
     "--projection-extension-version",
     type=click.Choice(EXTENSION_VERSIONS["projection"]),
-    help="'projection' extension version. Defaults to the latest version compatible with the STAC version.",
+    help="'projection' extension version. Defaults to the version matching the STAC version.",
 )
 @click.option(
     "--raster-and-eo-extension-version",
     type=click.Choice(EXTENSION_VERSIONS["raster_and_eo"]),
-    help="'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the latest version compatible with the STAC version.",
+    help="'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the version matching the STAC version.",
 )
 @click.option(
     "--max-raster-size",
