@@ -4,8 +4,13 @@ import warnings
 
 import pystac
 import pytest
+import rasterio
 
-from rio_stac.stac import UnsupportedSTACVersionError, _resolve_versions
+from rio_stac.stac import (
+    UnsupportedSTACVersionError,
+    _projection_fields,
+    _resolve_versions,
+)
 
 
 @pytest.mark.parametrize(
@@ -54,7 +59,8 @@ def test_unknown_stac_version(version):
 def test_unknown_extension_version(stac_version, version):
     """Unknown, unprefixed or pre-release extension versions raise."""
     with pytest.raises(
-        ValueError, match="projection_extension_version.*Allowed values: v1.1.0"
+        ValueError,
+        match="projection_extension_version.*Allowed values: v1.1.0, v2.0.0, v2.1.0",
     ):
         _resolve_versions(True, False, False, projection_extension_version=version)
 
@@ -64,12 +70,83 @@ def test_unknown_extension_version(stac_version, version):
         _resolve_versions(False, True, False, raster_and_eo_extension_version=version)
 
 
-# This test is weak, but will become stronger when STAC version v1.1 is supported properly
-def test_explicit_default_does_not_warn(stac_version):
-    """An explicit choice of the default version does not warn."""
+@pytest.mark.parametrize("projection", ["v1.1.0", "v2.0.0", "v2.1.0"])
+def test_explicit_default_or_newer_does_not_warn(stac_version, projection):
+    """An explicit choice of the default version (v1.1.0), or a newer one, does not warn."""
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        assert _resolve_versions(True, True, False, "v1.1.0", "v1.1.0") == (
-            "v1.1.0",
+        assert _resolve_versions(True, True, False, projection, "v1.1.0") == (
+            projection,
             "v1.1.0",
         )
+
+
+PROJ_INFO = {
+    "epsg": 32621,
+    "geometry": {"type": "Polygon", "coordinates": []},
+    "bbox": [0, 0, 1, 1],
+    "shape": [1, 1],
+    "transform": [1, 0, 0, 0, -1, 1, 0, 0, 1],
+}
+UTM = rasterio.crs.CRS.from_epsg(32621)
+WGS84 = rasterio.crs.CRS.from_epsg(4326)
+
+
+def test_projection_fields_v1():
+    """v1.1.0 output is unchanged: `proj:epsg`, including None."""
+    assert _projection_fields(PROJ_INFO, UTM, "v1.1.0") == {
+        "proj:epsg": 32621,
+        "proj:geometry": {"type": "Polygon", "coordinates": []},
+        "proj:bbox": [0, 0, 1, 1],
+        "proj:shape": [1, 1],
+        "proj:transform": [1, 0, 0, 0, -1, 1, 0, 0, 1],
+    }
+    no_epsg = {**PROJ_INFO, "epsg": None, "wkt2": "WKT"}
+    assert _projection_fields(no_epsg, None, "v1.1.0") == {
+        "proj:epsg": None,
+        "proj:geometry": {"type": "Polygon", "coordinates": []},
+        "proj:bbox": [0, 0, 1, 1],
+        "proj:shape": [1, 1],
+        "proj:transform": [1, 0, 0, 0, -1, 1, 0, 0, 1],
+        "proj:wkt2": "WKT",
+    }
+    # WGS 84 keeps `proj:bbox` and `proj:geometry` in v1.1.0
+    wgs84_fields = _projection_fields({**PROJ_INFO, "epsg": 4326}, WGS84, "v1.1.0")
+    assert wgs84_fields["proj:bbox"] == [0, 0, 1, 1]
+    assert wgs84_fields["proj:geometry"] == {"type": "Polygon", "coordinates": []}
+
+
+@pytest.mark.parametrize("version", ["v2.0.0", "v2.1.0"])
+def test_projection_fields_v2(version):
+    """v2.x writes `proj:code` instead of `proj:epsg`, or None with the wkt2 fallback."""
+    assert _projection_fields(PROJ_INFO, UTM, version) == {
+        "proj:code": "EPSG:32621",
+        "proj:geometry": PROJ_INFO["geometry"],
+        "proj:bbox": PROJ_INFO["bbox"],
+        "proj:shape": PROJ_INFO["shape"],
+        "proj:transform": PROJ_INFO["transform"],
+    }
+
+    no_epsg = {**PROJ_INFO, "epsg": None, "wkt2": "WKT"}
+    fields = _projection_fields(no_epsg, None, version)
+    assert fields["proj:code"] is None
+    assert fields["proj:wkt2"] == "WKT"
+    assert "proj:epsg" not in fields
+    assert "proj:bbox" in fields  # no CRS: not WGS 84, so kept
+    # input is not modified
+    assert "epsg" in no_epsg
+
+
+def test_projection_fields_wgs84():
+    """v2.1.0 omits `proj:bbox` and `proj:geometry` for WGS 84; v2.0.0 keeps them."""
+    crs = WGS84
+    info = {**PROJ_INFO, "epsg": 4326}
+    assert _projection_fields(info, crs, "v2.1.0") == {
+        "proj:code": "EPSG:4326",
+        "proj:shape": PROJ_INFO["shape"],
+        "proj:transform": PROJ_INFO["transform"],
+    }
+
+    fields = _projection_fields(info, crs, "v2.0.0")
+    assert fields["proj:bbox"] == PROJ_INFO["bbox"]
+    assert fields["proj:geometry"] == PROJ_INFO["geometry"]

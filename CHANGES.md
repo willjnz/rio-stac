@@ -1,10 +1,11 @@
 
 ## Unreleased
 
-* add `projection_extension_version` and `raster_and_eo_extension_version` options to `create_stac_item`, and `--projection-extension-version` / `--raster-and-eo-extension-version` to the CLI (only `v1.1.0` for now, not yet `v2.0.0`)
+* add `projection_extension_version` and `raster_and_eo_extension_version` options to `create_stac_item`, and `--projection-extension-version` / `--raster-and-eo-extension-version` to the CLI (eo/raster: only `v1.1.0` for now, not yet `v2.0.0`. projection: `v1.1.0` (default, but will be updated to `v2.1.0`), `v2.0.0`, and `v2.1.0`). Raster and eo are linked because of the overlap in bands properties.
 * raise an error when pystac writes a STAC version other than `1.0.0` or `1.1.0`. The STAC version is the one pystac writes (`pystac.set_stac_version()` or `PYSTAC_STAC_VERSION_OVERRIDE`)
 * **breaking**: remove `PROJECTION_EXT_VERSION`, `RASTER_EXT_VERSION` and `EO_EXT_VERSION` constants (see `EXTENSION_VERSIONS` and `DEFAULT_EXTENSION_VERSIONS`)
 * CLI: an unsupported STAC version is shown as a usage error (exit code 2). The error is `UnsupportedSTACVersionError`, a `ValueError` subclass
+* add projection extension `v2.0.0` and `v2.1.0` (`projection_extension_version`). They write `proj:code` (`"EPSG:{code}"`, or `null` with `proj:wkt2`/`proj:projjson` when there is no EPSG code) instead of `proj:epsg`. `v2.1.0` omits `proj:bbox` and `proj:geometry` when the CRS is WGS 84. Default is unchanged (`v1.1.0`) (supersedes https://github.com/developmentseed/rio-stac/pull/66, refs https://github.com/developmentseed/rio-stac/issues/64)
 
 ## 0.12.0 (2025-09-17)
 

@@ -17,15 +17,14 @@ from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
 
 # Extension versions rio-stac writes exactly. The last entry is the latest.
-# TODO: Extend these in the next stacked PRs
 EXTENSION_VERSIONS = {
-    "projection": ("v1.1.0",),
-    "raster_and_eo": ("v1.1.0",),
+    "projection": ("v1.1.0", "v2.0.0", "v2.1.0"),
+    "raster_and_eo": ("v1.1.0",),  # TODO: Extend this in the next stacked PRs
 }
 
 # Default extension versions for each STAC version rio-stac supports.
 # The STAC version itself is chosen by pystac (`pystac.get_stac_version()`), not rio-stac.
-# TODO: Extend these in the next stacked PRs
+# TODO: Update these in the next stacked PRs
 DEFAULT_EXTENSION_VERSIONS = {
     "1.0.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
     "1.1.0": {"projection": "v1.1.0", "raster_and_eo": "v1.1.0"},
@@ -205,6 +204,29 @@ def get_projection_info(
                 warnings.warn(f"Could not get PROJJSON from dataset : {ex}")
 
     return meta
+
+
+def _projection_fields(info: Dict, crs: Optional[rasterio.crs.CRS], version: str) -> Dict:
+    """Return `proj:` fields from `get_projection_info` output for a projection extension version.
+
+    see: https://github.com/stac-extensions/projection/blob/v2.1.0/CHANGELOG.md
+
+    """
+    info = dict(info)
+
+    # v2.0.0 replaced `"proj:epsg": 3857` with `"proj:code": "EPSG:3857"`.
+    if version in ("v2.0.0", "v2.1.0"):
+        # Only EPSG codes are written.
+        epsg = info.pop("epsg")
+        info = {"code": f"EPSG:{epsg}" if epsg else None, **info}
+
+    # v2.1.0: `proj:bbox` and `proj:geometry` should be omitted if the CRS is WGS 84.
+    if version == "v2.1.0" and crs == EPSG_4326:
+        info.pop("bbox")
+        info.pop("geometry")
+
+    # v1.1.0: fields are written as `get_projection_info` returns them (`"proj:epsg": int`).
+    return {f"proj:{name}": value for name, value in info.items()}
 
 
 def get_eobands_info(
@@ -501,10 +523,9 @@ def create_stac_item(
             extensions.append(_extension_url("projection", proj_version))
 
             properties.update(
-                {
-                    f"proj:{name}": value
-                    for name, value in get_projection_info(src_dst).items()
-                }
+                _projection_fields(
+                    get_projection_info(src_dst), src_dst.crs, proj_version
+                )
             )
 
         # add raster properties

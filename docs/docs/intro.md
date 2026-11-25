@@ -28,7 +28,7 @@ Options:
   --with-proj / --without-proj      Add the 'projection' extension and properties (default to True).
   --with-raster / --without-raster  Add the 'raster' extension and properties (default to True).
   --with-eo / --without-eo          Add the 'eo' extension and properties (default to True).
-  --projection-extension-version [v1.1.0]
+  --projection-extension-version [v1.1.0|v2.0.0|v2.1.0]
                                     'projection' extension version. Defaults to the version matching the STAC version.
   --raster-and-eo-extension-version [v1.1.0]
                                     'raster' and 'eo' extension versions. These are interrelated due to the bands properties. Defaults to the version matching the STAC version.
@@ -74,6 +74,8 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         "datetime": "2021-03-19T02:27:33.266356Z"
     }
     ```
+
+    The default version is `v1.1.0` (`"proj:epsg": 3857`). Pass `--projection-extension-version v2.0.0` or `v2.1.0` to write `"proj:code": "EPSG:3857"` instead. `v2.1.0` also leaves out `proj:bbox` and `proj:geometry` when the CRS is WGS 84.
 
     You can pass `--without-proj` to disable it.
 
