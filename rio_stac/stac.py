@@ -19,7 +19,7 @@ from rasterio.vrt import WarpedVRT
 # Extension versions rio-stac writes exactly. The last entry is the latest.
 EXTENSION_VERSIONS = {
     "projection": ("v1.1.0", "v2.0.0", "v2.1.0"),
-    "raster_and_eo": ("v1.1.0",), # TODO: Extend this in the next stacked PRs
+    "raster_and_eo": ("v1.1.0",),  # TODO: Extend this in the next stacked PRs
 }
 
 # Default extension versions for each STAC version rio-stac supports.
