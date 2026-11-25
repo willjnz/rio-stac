@@ -14,8 +14,7 @@ PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 
 DEFAULT_EXTENSIONS_STAC_1_1 = [
     "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
 ]
 
 
@@ -31,12 +30,15 @@ def test_rio_stac_cli(runner, stac_version):
         assert stac_item["type"] == "Feature"
         assert stac_item["assets"]["asset"]["href"] == src_path
         assert stac_item["links"] == []
+        # no eo extension: no eo:* field (no cloud cover)
         assert stac_item["stac_extensions"] == DEFAULT_EXTENSIONS_STAC_1_1
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
         asset = stac_item["assets"]["asset"]
-        assert [band["data_type"] for band in asset["raster:bands"]] == ["uint16"]
-        assert asset["eo:bands"] == [{"name": "b1", "description": "gray"}]
+        assert asset["data_type"] == "uint16"
+        assert asset["description"] == "gray"
+        assert "raster:bands" not in asset
+        assert "eo:bands" not in asset
 
         result = runner.invoke(
             stac,
@@ -112,8 +114,7 @@ def test_rio_stac_cli(runner, stac_version):
         assert stac_item["stac_extensions"] == DEFAULT_EXTENSIONS_STAC_1_1
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        asset = stac_item["assets"]["asset"]
-        assert [band["data_type"] for band in asset["raster:bands"]] == ["uint16"]
+        assert stac_item["assets"]["asset"]["data_type"] == "uint16"
 
         with runner.isolated_filesystem():
             src_path = os.path.join(PREFIX, "dataset_nocrs.tif")
@@ -129,8 +130,8 @@ def test_rio_stac_cli(runner, stac_version):
             assert stac_item["properties"]["proj:code"] == "EPSG:3035"
             assert "proj:projjson" not in stac_item["properties"]
             asset = stac_item["assets"]["asset"]
-            assert [b["data_type"] for b in asset["raster:bands"]] == ["float32"]
-            assert asset["eo:bands"] == [{"name": "b1", "description": "gray"}]
+            assert asset["data_type"] == "float32"
+            assert asset["description"] == "gray"
 
 
 def test_rio_stac_cli_stac_1_0(runner):

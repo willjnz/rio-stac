@@ -23,7 +23,7 @@ PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 
 @pytest.mark.parametrize(
     "stac_version,expected",
-    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v2.1.0", "v1.1.0"))],
+    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v2.1.0", "v2.0.0"))],
     indirect=["stac_version"],
 )
 def test_defaults(stac_version, expected):
@@ -46,8 +46,9 @@ def test_not_requested(stac_version):
     assert (
         _resolve_versions(False, True, False, "v9.9.9", None)[0] is None
     )  # Same as above but for proj
+    bands_default = {"1.0.0": "v1.1.0", "1.1.0": "v2.0.0"}[stac_version]
     assert (
-        _resolve_versions(False, False, True)[1] == "v1.1.0"
+        _resolve_versions(False, False, True)[1] == bands_default
     )  # Just eo returns the shared eo/raster version
 
 
@@ -85,7 +86,6 @@ def test_unknown_extension_version(stac_version, version):
         ("1.0.0", "v1.1.0", "v1.1.0"),
         ("1.0.0", "v2.0.0", "v1.1.0"),
         ("1.0.0", "v2.1.0", "v1.1.0"),
-        ("1.1.0", "v2.1.0", "v1.1.0"),
         ("1.1.0", "v2.1.0", "v2.0.0"),
     ],
     indirect=["stac_version"],
@@ -112,6 +112,18 @@ def test_bands_v2_falls_back_under_stac_1_0():
         assert "rio-stac writes 'v1.1.0' instead" in message
         assert "common-metadata.md#bands" in message
         assert "best-practices.md#band-migration" in message
+
+
+@stac_1_1
+def test_explicit_older_bands_warns(stac_version):
+    """Under STAC 1.1, an explicit raster/eo v1.1.0 is older than the default v2.0.0 and warns."""
+    with pytest.warns(
+        UserWarning, match=r"older than the default \(v2.0.0\) for STAC 1.1.0"
+    ):
+        versions = _resolve_versions(
+            False, True, False, raster_and_eo_extension_version="v1.1.0"
+        )
+    assert versions == (None, "v1.1.0")
 
 
 @stac_1_1
