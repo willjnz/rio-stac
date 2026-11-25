@@ -44,13 +44,13 @@ def test_not_requested(stac_version):
 # rio-stac doesn't know how to write >=1.2.0 so it explicitly raises
 @pytest.mark.parametrize("version", ["1.2.0", "3.0.0"])
 def test_unknown_stac_version(version):
-    """Unknown STAC versions raise only when an extension is requested."""
+    """Unknown STAC versions raise, with or without extensions."""
     pystac.set_stac_version(version)
-    assert _resolve_versions(False, False, False) == (None, None)
-    with pytest.raises(
-        UnsupportedSTACVersionError, match=f"STAC {version}.*1.0.0, 1.1.0"
-    ):
-        _resolve_versions(True, False, False)
+    for flags in [(False, False, False), (True, False, False), (False, True, False)]:
+        with pytest.raises(
+            UnsupportedSTACVersionError, match=f"STAC {version}.*1.0.0, 1.1.0"
+        ):
+            _resolve_versions(*flags)
 
 
 @pytest.mark.parametrize("version", ["v3.0.0", "1.1.0", "v2.0.0-beta.1"])

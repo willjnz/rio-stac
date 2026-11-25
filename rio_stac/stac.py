@@ -56,22 +56,18 @@ def _resolve_versions(
     Returns (projection version, raster and eo version), with `None` for extensions not requested.
 
     """
-    requested = {
-        "projection": (with_proj, projection_extension_version),
-        "raster_and_eo": (with_raster or with_eo, raster_and_eo_extension_version),
-    }
-    # Without extensions rio-stac writes nothing that depends on the STAC version.
-    if not any(is_requested for is_requested, _ in requested.values()):
-        return None, None
-
     stac_version = pystac.get_stac_version()
     if stac_version not in DEFAULT_EXTENSION_VERSIONS:
         raise UnsupportedSTACVersionError(
             f"pystac is writing STAC {stac_version}, but rio-stac only supports STAC "
-            f"{', '.join(DEFAULT_EXTENSION_VERSIONS)} when adding extensions. "
+            f"{', '.join(DEFAULT_EXTENSION_VERSIONS)}. "
             f"Use pystac.set_stac_version('1.1.0') or set PYSTAC_STAC_VERSION_OVERRIDE=1.1.0."
         )
 
+    requested = {
+        "projection": (with_proj, projection_extension_version),
+        "raster_and_eo": (with_raster or with_eo, raster_and_eo_extension_version),
+    }
     resolved: Dict[str, Optional[str]] = {}
     for group, (is_requested, version) in requested.items():
         # Not requested
