@@ -28,9 +28,9 @@ def test_rio_stac_cli(runner):
         ]
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        band = stac_item["assets"]["asset"]["bands"][0]
-        assert band["data_type"] == "uint16"
-        assert band["description"] == "gray"
+        asset = stac_item["assets"]["asset"]
+        assert asset["data_type"] == "uint16"
+        assert asset["description"] == "gray"
 
         result = runner.invoke(
             stac,
@@ -109,7 +109,7 @@ def test_rio_stac_cli(runner):
         ]
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        assert stac_item["assets"]["asset"]["bands"][0]["data_type"] == "uint16"
+        assert stac_item["assets"]["asset"]["data_type"] == "uint16"
 
         with runner.isolated_filesystem():
             src_path = os.path.join(PREFIX, "dataset_nocrs.tif")
@@ -128,6 +128,6 @@ def test_rio_stac_cli(runner):
             assert "datetime" in stac_item["properties"]
             assert stac_item["properties"]["proj:code"] == "EPSG:3035"
             assert "proj:projjson" not in stac_item["properties"]
-            band = stac_item["assets"]["asset"]["bands"][0]
-            assert band["data_type"] == "float32"
-            assert band["description"] == "gray"
+            asset = stac_item["assets"]["asset"]
+            assert asset["data_type"] == "float32"
+            assert asset["description"] == "gray"
