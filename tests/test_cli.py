@@ -150,6 +150,17 @@ def test_rio_stac_cli_extension_versions(runner):
         assert result.exit_code == 0
         assert json.loads(result.output)["stac_version"] == version
 
+    # The option is passed through: v2.1.0 writes `proj:code`, not the default `proj:epsg`
+    result = runner.invoke(stac, [src_path, "--projection-extension-version", "v2.1.0"])
+    assert result.exit_code == 0
+    stac_item = json.loads(result.output)
+    assert (
+        "https://stac-extensions.github.io/projection/v2.1.0/schema.json"
+        in stac_item["stac_extensions"]
+    )
+    assert stac_item["properties"]["proj:code"] == "EPSG:32621"
+    assert "proj:epsg" not in stac_item["properties"]
+
     # Error for an unknown STAC version
     result = runner.invoke(stac, [src_path, "--projection-extension-version", "v3.0.0"])
     assert result.exit_code == 2
