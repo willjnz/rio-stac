@@ -211,7 +211,7 @@ def get_projection_info(
 def _projection_fields(info: Dict, crs: Optional[rasterio.crs.CRS], version: str) -> Dict:
     """Return `proj:` fields from `get_projection_info` output for a projection extension version.
 
-    see: https://github.com/stac-extensions/projection/blob/main/CHANGELOG.md
+    see: https://github.com/stac-extensions/projection/blob/v2.1.0/README.md#data-in-wgs-84
 
     """
     info = dict(info)
