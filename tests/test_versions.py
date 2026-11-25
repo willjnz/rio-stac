@@ -101,12 +101,25 @@ WGS84 = rasterio.crs.CRS.from_epsg(4326)
 def test_projection_fields_v1():
     """v1.1.0 output is unchanged: `proj:epsg`, including None."""
     assert _projection_fields(PROJ_INFO, UTM, "v1.1.0") == {
-        f"proj:{k}": v for k, v in PROJ_INFO.items()
+        "proj:epsg": 32621,
+        "proj:geometry": {"type": "Polygon", "coordinates": []},
+        "proj:bbox": [0, 0, 1, 1],
+        "proj:shape": [1, 1],
+        "proj:transform": [1, 0, 0, 0, -1, 1, 0, 0, 1],
     }
     no_epsg = {**PROJ_INFO, "epsg": None, "wkt2": "WKT"}
-    fields = _projection_fields(no_epsg, None, "v1.1.0")
-    assert fields["proj:epsg"] is None
-    assert fields["proj:wkt2"] == "WKT"
+    assert _projection_fields(no_epsg, None, "v1.1.0") == {
+        "proj:epsg": None,
+        "proj:geometry": {"type": "Polygon", "coordinates": []},
+        "proj:bbox": [0, 0, 1, 1],
+        "proj:shape": [1, 1],
+        "proj:transform": [1, 0, 0, 0, -1, 1, 0, 0, 1],
+        "proj:wkt2": "WKT",
+    }
+    # WGS 84 keeps `proj:bbox` and `proj:geometry` in v1.1.0
+    wgs84_fields = _projection_fields({**PROJ_INFO, "epsg": 4326}, WGS84, "v1.1.0")
+    assert wgs84_fields["proj:bbox"] == [0, 0, 1, 1]
+    assert wgs84_fields["proj:geometry"] == {"type": "Polygon", "coordinates": []}
 
 
 @pytest.mark.parametrize("version", ["v2.0.0", "v2.1.0"])
