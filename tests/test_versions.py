@@ -15,7 +15,7 @@ from rio_stac.stac import (
 
 @pytest.mark.parametrize(
     "stac_version,expected",
-    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v1.1.0", "v1.1.0"))],
+    [("1.0.0", ("v1.1.0", "v1.1.0")), ("1.1.0", ("v2.1.0", "v1.1.0"))],
     indirect=["stac_version"],
 )
 def test_defaults(stac_version, expected):

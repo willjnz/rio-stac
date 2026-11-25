@@ -37,3 +37,8 @@ def stac_version(request):
     """Run a test once for each STAC version rio-stac supports."""
     pystac.set_stac_version(request.param)
     return request.param
+
+
+# Pin a test to one STAC version (via the `stac_version` fixture)
+stac_1_0 = pytest.mark.parametrize("stac_version", ["1.0.0"], indirect=True)
+stac_1_1 = pytest.mark.parametrize("stac_version", ["1.1.0"], indirect=True)

@@ -7,10 +7,20 @@ import pystac
 
 from rio_stac.scripts.cli import stac
 
+from .conftest import stac_1_1
+
 PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
-def test_rio_stac_cli(runner):
+DEFAULT_EXTENSIONS_STAC_1_1 = [
+    "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
+    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+]
+
+
+@stac_1_1
+def test_rio_stac_cli(runner, stac_version):
     """Should work as expected."""
     with runner.isolated_filesystem():
         src_path = os.path.join(PREFIX, "dataset_cog.tif")
@@ -19,18 +29,14 @@ def test_rio_stac_cli(runner):
         assert result.exit_code == 0
         stac_item = json.loads(result.output)
         assert stac_item["type"] == "Feature"
-        assert stac_item["assets"]["asset"]
         assert stac_item["assets"]["asset"]["href"] == src_path
         assert stac_item["links"] == []
-        assert stac_item["stac_extensions"] == [
-            "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-        ]
+        assert stac_item["stac_extensions"] == DEFAULT_EXTENSIONS_STAC_1_1
         assert "datetime" in stac_item["properties"]
-        assert "proj:epsg" in stac_item["properties"]
-        assert "raster:bands" in stac_item["assets"]["asset"]
-        assert "eo:bands" in stac_item["assets"]["asset"]
+        assert stac_item["properties"]["proj:code"] == "EPSG:32621"
+        asset = stac_item["assets"]["asset"]
+        assert [band["data_type"] for band in asset["raster:bands"]] == ["uint16"]
+        assert asset["eo:bands"] == [{"name": "b1", "description": "gray"}]
 
         result = runner.invoke(
             stac,
@@ -101,16 +107,13 @@ def test_rio_stac_cli(runner):
         with open("item.json", "r") as f:
             stac_item = json.loads(f.read())
         assert stac_item["type"] == "Feature"
-        assert stac_item["assets"]["asset"]
+        assert stac_item["assets"]["asset"]["href"] == src_path
         assert stac_item["links"] == []
-        assert stac_item["stac_extensions"] == [
-            "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-        ]
+        assert stac_item["stac_extensions"] == DEFAULT_EXTENSIONS_STAC_1_1
         assert "datetime" in stac_item["properties"]
-        assert "proj:epsg" in stac_item["properties"]
-        assert "raster:bands" in stac_item["assets"]["asset"]
+        assert stac_item["properties"]["proj:code"] == "EPSG:32621"
+        asset = stac_item["assets"]["asset"]
+        assert [band["data_type"] for band in asset["raster:bands"]] == ["uint16"]
 
         with runner.isolated_filesystem():
             src_path = os.path.join(PREFIX, "dataset_nocrs.tif")
@@ -119,19 +122,37 @@ def test_rio_stac_cli(runner):
             assert result.exit_code == 0
             stac_item = json.loads(result.output)
             assert stac_item["type"] == "Feature"
-            assert stac_item["assets"]["asset"]
             assert stac_item["assets"]["asset"]["href"] == src_path
             assert stac_item["links"] == []
-            assert stac_item["stac_extensions"] == [
-                "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
-                "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-                "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-            ]
+            assert stac_item["stac_extensions"] == DEFAULT_EXTENSIONS_STAC_1_1
             assert "datetime" in stac_item["properties"]
-            assert "proj:epsg" in stac_item["properties"]
+            assert stac_item["properties"]["proj:code"] == "EPSG:3035"
             assert "proj:projjson" not in stac_item["properties"]
-            assert "raster:bands" in stac_item["assets"]["asset"]
-            assert "eo:bands" in stac_item["assets"]["asset"]
+            asset = stac_item["assets"]["asset"]
+            assert [b["data_type"] for b in asset["raster:bands"]] == ["float32"]
+            assert asset["eo:bands"] == [{"name": "b1", "description": "gray"}]
+
+
+def test_rio_stac_cli_stac_1_0(runner):
+    """PYSTAC_STAC_VERSION_OVERRIDE=1.0.0 gives the STAC 1.0 layout."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    result = runner.invoke(
+        stac, [src_path], env={"PYSTAC_STAC_VERSION_OVERRIDE": "1.0.0"}
+    )
+    assert not result.exception
+    assert result.exit_code == 0
+    stac_item = json.loads(result.output)
+    assert stac_item["stac_version"] == "1.0.0"
+    assert stac_item["stac_extensions"] == [
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+    ]
+    assert stac_item["properties"]["proj:epsg"] == 32621
+    assert "proj:code" not in stac_item["properties"]
+    asset = stac_item["assets"]["asset"]
+    assert [band["data_type"] for band in asset["raster:bands"]] == ["uint16"]
+    assert asset["eo:bands"] == [{"name": "b1", "description": "gray"}]
 
 
 def test_rio_stac_cli_extension_versions(runner):

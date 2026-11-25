@@ -66,7 +66,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     ```json
     {
-        "proj:epsg": 3857,
+        "proj:code": "EPSG:3857",
         "proj:geometry": {"type": "Polygon", "coordinates": [...]},
         "proj:bbox": [...],
         "proj:shape": [8192, 8192],
@@ -75,7 +75,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     }
     ```
 
-    The default version is `v1.1.0` (`"proj:epsg": 3857`). Pass `--projection-extension-version v2.0.0` or `v2.1.0` to write `"proj:code": "EPSG:3857"` instead. `v2.1.0` also leaves out `proj:bbox` and `proj:geometry` when the CRS is WGS 84.
+    With STAC 1.1 the default version is `v2.1.0`, which writes `"proj:code": "EPSG:3857"` and leaves out `proj:bbox` and `proj:geometry` when the CRS is WGS 84. With STAC 1.0 the default is `v1.1.0`, which writes `"proj:epsg": 3857`. Use `--projection-extension-version` to choose the version (see [STAC and extension versions](index.md#stac-and-extension-versions)).
 
     You can pass `--without-proj` to disable it.
 
@@ -194,7 +194,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "type": "Feature",
   "stac_version": "1.1.0",
   "stac_extensions": [
-    "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
     "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
     "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
   ],
@@ -233,7 +233,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     74.62204314252978
   ],
   "properties": {
-    "proj:epsg": 32621,
+    "proj:code": "EPSG:32621",
     "proj:geometry": {
       "type": "Polygon",
       "coordinates": [
@@ -345,7 +345,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "type": "Feature",
   "stac_version": "1.1.0",
   "stac_extensions": [
-    "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
     "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
     "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
   ],
@@ -385,40 +385,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   ],
   "properties": {
     "comments:name": "myfile",
-    "proj:epsg": 4326,
-    "proj:geometry": {
-      "type": "Polygon",
-      "coordinates": [
-        [
-          [
-            -44.84032,
-            -23.104184
-          ],
-          [
-            -44.66872,
-            -23.104184
-          ],
-          [
-            -44.66872,
-            -22.932584
-          ],
-          [
-            -44.84032,
-            -22.932584
-          ],
-          [
-            -44.84032,
-            -23.104184
-          ]
-        ]
-      ]
-    },
-    "proj:bbox": [
-      -44.84032,
-      -23.104184,
-      -44.66872,
-      -22.932584
-    ],
+    "proj:code": "EPSG:4326",
     "proj:shape": [
       50,
       50
