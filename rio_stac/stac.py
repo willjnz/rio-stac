@@ -16,7 +16,7 @@ from rasterio.features import bounds as feature_bounds
 from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
 
-PROJECTION_EXT_VERSION = "v1.1.0"
+PROJECTION_EXT_VERSION = "v2.1.0"
 RASTER_EXT_VERSION = "v1.1.0"
 EO_EXT_VERSION = "v1.1.0"
 
@@ -90,14 +90,15 @@ def get_projection_info(
 
     The STAC projection extension allows for three different ways to describe the coordinate reference system
     associated with a raster :
-    - EPSG code
+    - code (`"EPSG:<code>"`, or None when there is no EPSG code)
     - WKT2
     - PROJJSON
 
-    All are optional, and they can be provided altogether as well. Therefore, as long as one can be obtained from
-    the data, we add it to the returned dictionary.
+    WKT2, or PROJJSON if WKT2 fails, is only added when there is no EPSG code.
 
-    see: https://github.com/stac-extensions/projection
+    `bbox` and `geometry` are omitted when the CRS is WGS 84, as they would duplicate the Item's.
+
+    see: https://github.com/stac-extensions/projection/blob/v2.1.0/README.md
 
     """
 
@@ -107,12 +108,16 @@ def get_projection_info(
         epsg = src_dst.crs.to_epsg() if src_dst.crs.is_epsg_code else None
 
     meta = {
-        "epsg": epsg,
+        "code": f"EPSG:{epsg}" if epsg else None,
         "geometry": bbox_to_geom(src_dst.bounds),
         "bbox": list(src_dst.bounds),
         "shape": [src_dst.height, src_dst.width],
         "transform": list(src_dst.transform),
     }
+
+    # v2.1.0: `bbox` and `geometry` should be omitted when the CRS is WGS 84.
+    if src_dst.crs == EPSG_4326:
+        del meta["bbox"], meta["geometry"]
 
     if not epsg and src_dst.crs:
         # WKT2
