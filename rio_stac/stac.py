@@ -373,7 +373,7 @@ def get_media_type(
     return None
 
 
-def create_stac_item(
+def create_stac_item(  # noqa: C901
     source: Union[str, DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
     input_datetime: Optional[datetime.datetime] = None,
     extensions: Optional[List[str]] = None,
@@ -465,11 +465,13 @@ def create_stac_item(
                 warnings.warn(f"Could not get parse date: {dst_date}: {err}")
                 dst_datetime = None
 
-            input_datetime = (
-                input_datetime
-                or dst_datetime
-                or datetime.datetime.now(datetime.timezone.utc)
-            )
+            input_datetime = input_datetime or dst_datetime
+            if not input_datetime:
+                warnings.warn(
+                    "Could not find a datetime in the dataset metadata. Falling back to the current time. "
+                    "Pass `input_datetime` (`--datetime`) to set the acquisition time."
+                )
+                input_datetime = datetime.datetime.now(datetime.timezone.utc)
 
         # add projection properties
         if with_proj:
@@ -497,8 +499,11 @@ def create_stac_item(
             eo_bands = get_eobands_info(src_dst)
 
             cloudcover = src_dst.get_tag_item("CLOUDCOVER", "IMAGERY")
-            if cloudcover is not None:
-                properties.update({"eo:cloud_cover": int(cloudcover)})
+            # Only valid percentages: GDAL uses 999 when the cloud cover is not available
+            # https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing
+            # Supports int and float
+            if cloudcover is not None and 0 <= float(cloudcover) <= 100:
+                properties.update({"eo:cloud_cover": round(float(cloudcover))})
 
         # Band fields are only written on the asset rio-stac creates.
         band_fields = {} if assets else get_bands_info(raster_bands, eo_bands)

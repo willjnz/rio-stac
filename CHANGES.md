@@ -4,6 +4,8 @@
 * **breaking**: `get_raster_info` returns raster v2.0.0 field names (`raster:scale`, `raster:offset`, `raster:sampling`, `raster:histogram`)
 * add `get_bands_info` to build the `bands` asset field from `get_raster_info` and `get_eobands_info`
 * band metadata follows the [STAC best practices for bands](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands): values shared by all bands (e.g. `data_type`, `nodata`, `raster:scale`) are written on the asset, and a single band is written directly on the asset without `name`. `name`, `description`, `statistics` and `raster:histogram` always stay per band
+* skip `eo:cloud_cover` when GDAL's `CLOUDCOVER` is not between 0 and 100 (e.g. `999`, not available)
+* warn when no datetime is found in the dataset and the current time is used
 * **breaking**: update the `projection` extension to `v2.1.0` (was `v1.1.0`). `proj:epsg` (e.g. `32621`) becomes `proj:code` (e.g. `"EPSG:32621"`, or `null` when there is no EPSG code), and `proj:bbox`/`proj:geometry` are omitted when the CRS is WGS84. `get_projection_info` returns `code` instead of `epsg`.
 
 ## 0.12.0 (2025-09-17)

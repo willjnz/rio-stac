@@ -50,7 +50,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
 - **datetime** (-d, --datetime)
 
-    By design, all STAC items must have a datetime in their properties. By default the CLI will set the time to the actual UTC Time or use `ACQUISITIONDATETIME` defined in dataset metadata (see [GDAL Raster data model](https://gdal.org/user/raster_data_model.html#imagery-domain-remote-sensing)). The CLI will accept any format supported by [`dateparser`](https://dateparser.readthedocs.io/en/latest/).
+    By design, all STAC items must have a datetime in their properties. By default the CLI will use `ACQUISITIONDATETIME` defined in dataset metadata (see [GDAL Raster data model](https://gdal.org/user/raster_data_model.html#imagery-domain-remote-sensing)), or `TIFFTAG_DATETIME`. If neither is set, it uses the current UTC time and warns, as that is rarely the acquisition time. The CLI will accept any format supported by [`dateparser`](https://dateparser.readthedocs.io/en/latest/).
 
     You can also define `start_datetime` and `end_datetime` by using `--datetime {start}/{end}` notation.
 
@@ -131,7 +131,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     {"ACQUISITIONDATETIME": "2011-05-01 13:00:00", "CLOUDCOVER": "2", "SATELLITEID": "WV03"}
     ```
 
-    You can also set it on a GeoTIFF yourself, e.g. with rasterio: `dst.update_tags(ns="IMAGERY", CLOUDCOVER=2)`. Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`; the `eo` extension is declared for them too.
+    `eo:cloud_cover` is only written when the value is between 0 and 100 (GDAL uses `999` when the cloud cover is not available). You can also set it on a GeoTIFF yourself, e.g. with rasterio: `dst.update_tags(ns="IMAGERY", CLOUDCOVER=2)`. Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`; the `eo` extension is declared for them too.
 
     Asset's bands: `name` and `description` are STAC 1.1 core fields, written in `bands` (or `description` directly on the asset for a single band). The `eo` extension (`v2.0.0`) is only declared when an `eo:*` field such as `eo:cloud_cover` is written.
     ```json

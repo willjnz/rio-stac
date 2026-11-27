@@ -10,6 +10,8 @@ import numpy
 import pystac
 import pytest
 import rasterio
+from rasterio.io import MemoryFile
+from rasterio.transform import from_origin
 
 from rio_stac.stac import create_stac_item, get_bands_info, get_raster_info
 
@@ -316,6 +318,50 @@ def test_create_item_eo():
     ]
 
 
+def _memfile(**imagery):
+    """A 2 band uint16 GeoTIFF in memory, with optional IMAGERY tags."""
+    memfile = MemoryFile()
+    profile = {
+        "driver": "GTiff",
+        "dtype": "uint16",
+        "count": 2,
+        "width": 4,
+        "height": 4,
+        "crs": "EPSG:32621",
+        "transform": from_origin(373185, 8286015, 10, 20),
+    }
+    with memfile.open(**profile) as dst:
+        dst.write(numpy.arange(32, dtype="uint16").reshape(2, 4, 4))
+        if imagery:
+            dst.update_tags(ns="IMAGERY", **imagery)
+    return memfile
+
+
+def test_cloud_cover_not_available():
+    """Cloud cover outside 0-100 (e.g. GDAL's 999, not available) is not written."""
+    for cloudcover in [999, 120, -1, 100.4]:
+        with _memfile(CLOUDCOVER=cloudcover) as memfile, memfile.open() as src_dst:
+            item = create_stac_item(src_dst, input_datetime=input_date, with_eo=True)
+        assert "eo:cloud_cover" not in item.properties
+
+    # Decimal values are rounded to an int
+    for cloudcover, expected in [(40, 40), ("40.0", 40), (40.6, 41)]:
+        with _memfile(CLOUDCOVER=cloudcover) as memfile, memfile.open() as src_dst:
+            item = create_stac_item(src_dst, input_datetime=input_date, with_eo=True)
+        assert item.properties["eo:cloud_cover"] == expected
+
+
+def test_datetime_now_warning():
+    """A warning is raised when no datetime is found and the current time is used."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    with pytest.warns(UserWarning, match="the current time"):
+        create_stac_item(src_path)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        create_stac_item(src_path, input_datetime=input_date)
+
+
 def test_create_item_datetime():
     """Should return a valid item with datetime from IMD."""
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="FALSE"):
@@ -391,7 +437,12 @@ def test_stats_unique_values():
     # Should not raise warnings when bins is good
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        item = create_stac_item(src_path, with_raster=True, histogram_bins=3)
+        item = create_stac_item(
+            src_path,
+            input_datetime=input_date,
+            with_raster=True,
+            histogram_bins=3,
+        )
 
     with pytest.raises(ValueError):
         create_stac_item(
