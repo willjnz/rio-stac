@@ -32,6 +32,7 @@ _SHAREABLE = {
     "raster:scale",
     "raster:offset",
     "raster:bits_per_sample",
+    "raster:spatial_resolution",
     "raster:sampling",
 }
 
@@ -117,6 +118,29 @@ def _get_centroid(
         lon = (lon + 180) % 360 - 180
 
     return lon, lats[0]
+
+
+def _get_average_spatial_resolution_in_meters(
+    src_dst: Union[DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
+) -> Optional[float]:
+    """Get the average pixel size in meters, or None when it can't be computed."""
+    if not src_dst.crs:
+        return None
+    if src_dst.crs.is_projected:
+        factor = src_dst.crs.linear_units_factor[1]
+        return (src_dst.res[0] + src_dst.res[1]) / 2 * factor
+    # Geographic (degrees): the resolution GDAL would use when warping to the local UTM zone
+    try:
+        lon, lat = _get_centroid(src_dst)
+        utm = rasterio.crs.CRS.from_epsg(
+            (32600 if lat >= 0 else 32700) + int((lon + 180) // 6) + 1
+        )
+        tr, _, _ = warp.calculate_default_transform(
+            src_dst.crs, utm, src_dst.width, src_dst.height, *src_dst.bounds
+        )
+        return (tr.a - tr.e) / 2
+    except Exception:
+        return None
 
 
 def get_projection_info(
@@ -331,8 +355,8 @@ def get_raster_info(  # noqa: C901
     meta: List[Dict] = []
 
     area_or_point = src_dst.tags().get("AREA_OR_POINT", "").lower()
+    resolution = _get_average_spatial_resolution_in_meters(src_dst)
 
-    # Missing `spatial_resolution`
     for band in src_dst.indexes:
         value = {
             "data_type": src_dst.dtypes[band - 1],
@@ -348,6 +372,9 @@ def get_raster_info(  # noqa: C901
         nbits = src_dst.tags(band, ns="IMAGE_STRUCTURE").get("NBITS")
         if nbits:
             value["raster:bits_per_sample"] = int(nbits)
+
+        if resolution:
+            value["raster:spatial_resolution"] = resolution
 
         # If the Nodata is not set we don't forward it.
         if src_dst.nodata is not None:
@@ -512,6 +539,11 @@ def create_stac_item(  # noqa: C901
                     "Pass `input_datetime` (`--datetime`) to set the acquisition time."
                 )
                 input_datetime = datetime.datetime.now(datetime.timezone.utc)
+
+        # The average pixel size in meters
+        gsd = _get_average_spatial_resolution_in_meters(src_dst)
+        if gsd and "gsd" not in properties:
+            properties["gsd"] = gsd
 
         # add projection properties
         if with_proj:

@@ -6,6 +6,7 @@
 * band metadata follows the [STAC best practices for bands](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands): values shared by all bands (e.g. `data_type`, `nodata`, `raster:scale`) are written on the asset, and a single band is written directly on the asset without `name`. `name`, `description`, `statistics` and `raster:histogram` always stay per band
 * add `eo:common_name` to bands whose GDAL color interpretation is an eo common name (e.g. `red`, `green`, `blue`)
 * add `raster:bits_per_sample` (from GDAL's `NBITS`)
+* add `raster:spatial_resolution` and `gsd`, the average pixel size in meters (for geographic CRSs, as if warped to the local UTM zone)
 * add `proj:centroid` (the center of the raster bounds, in lat/lon)
 * skip `eo:cloud_cover` when GDAL's `CLOUDCOVER` is not between 0 and 100 (e.g. `999`, not available)
 * warn when no datetime is found in the dataset and the current time is used

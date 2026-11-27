@@ -98,6 +98,7 @@ To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), downgrade rio
     74.62204314252978
   ],
   "properties": {
+    "gsd": 100.01126757344893,
     "proj:code": "EPSG:32621",
     "proj:geometry": {
       "type": "Polygon",
@@ -162,6 +163,7 @@ To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), downgrade rio
       "raster:scale": 1.0,
       "raster:offset": 0.0,
       "raster:sampling": "point",
+      "raster:spatial_resolution": 100.01126757344893,
       "statistics": {
         "mean": 2107.524612053134,
         "minimum": 1,
