@@ -147,6 +147,10 @@ To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), downgrade rio
       0.0,
       1.0
     ],
+    "proj:centroid": {
+      "lat": 73.4675735659621,
+      "lon": -56.80794728322342
+    },
     "datetime": "2026-11-26T00:04:10.658713Z"
   },
   "links": [],
