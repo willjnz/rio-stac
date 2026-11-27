@@ -90,7 +90,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     link: https://github.com/stac-extensions/raster
 
-    rio-stac writes raster `v2.0.0`: band metadata goes in the STAC 1.1 `bands` array. `data_type`, `nodata`, `unit` and `statistics` are core fields; `scale`, `offset`, `sampling`, `histogram` and `bits_per_sample` (from GDAL's `NBITS`, e.g. 12 bit data stored as `uint16`) get the `raster:` prefix. Following the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands), values shared by all bands are written on the asset, and a single band is written directly on the asset:
+    rio-stac writes raster `v2.0.0`: band metadata goes in the STAC 1.1 `bands` array. `data_type`, `nodata`, `unit` and `statistics` are core fields; `scale`, `offset`, `sampling`, `histogram`, `bits_per_sample` (from GDAL's `NBITS`, e.g. 12 bit data stored as `uint16`) and `spatial_resolution` get the `raster:` prefix. `raster:spatial_resolution` (and the item's `gsd`) is the average pixel size in meters (for geographic CRSs, as if warped to the local UTM zone). Following the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands), values shared by all bands are written on the asset, and a single band is written directly on the asset:
 
     ```json
     "data_type": "uint16",
@@ -247,6 +247,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     74.62204314252978
   ],
   "properties": {
+    "gsd": 100.01126757344893,
     "proj:code": "EPSG:32621",
     "proj:geometry": {
       "type": "Polygon",
@@ -311,6 +312,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
       "raster:scale": 1.0,
       "raster:offset": 0.0,
       "raster:sampling": "point",
+      "raster:spatial_resolution": 100.01126757344893,
       "statistics": {
         "mean": 2107.524612053134,
         "minimum": 1,
@@ -394,6 +396,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   ],
   "properties": {
     "comments:name": "myfile",
+    "gsd": 366.0711701873288,
     "proj:code": "EPSG:4326",
     "proj:shape": [
       50,
@@ -432,6 +435,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
       "raster:scale": 1.0,
       "raster:offset": 0.0,
       "raster:sampling": "area",
+      "raster:spatial_resolution": 366.0711701873288,
       "bands": [
         {
           "name": "b1",

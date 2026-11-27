@@ -89,7 +89,9 @@ def test_create_item_options():
     assert item_dict["assets"]["asset"]["type"] == pystac.MediaType.COG
     assert item_dict["links"] == []
     assert item_dict["stac_extensions"] == []
-    assert list(item_dict["properties"]) == ["datetime"]
+    # gsd is core metadata, the average pixel size in meters
+    assert list(item_dict["properties"]) == ["gsd", "datetime"]
+    assert item_dict["properties"]["gsd"] == 100.01126757344893
 
     # additional extensions and properties
     item = create_stac_item(
@@ -325,7 +327,12 @@ def test_create_item_eo():
     ]
 
 
-def _memfile(nbits=None, **imagery):
+def _memfile(
+    nbits=None,
+    crs="EPSG:32621",
+    transform=from_origin(373185, 8286015, 10, 20),
+    **imagery,
+):
     """A 2 band uint16 GeoTIFF in memory, with optional NBITS and IMAGERY tags."""
     memfile = MemoryFile()
     profile = {
@@ -334,8 +341,8 @@ def _memfile(nbits=None, **imagery):
         "count": 2,
         "width": 4,
         "height": 4,
-        "crs": "EPSG:32621",
-        "transform": from_origin(373185, 8286015, 10, 20),
+        "crs": crs,
+        "transform": transform,
     }
     if nbits:
         profile["nbits"] = nbits
@@ -360,17 +367,33 @@ def test_cloud_cover_not_available():
         assert item.properties["eo:cloud_cover"] == expected
 
 
-def test_bits_per_sample():
-    """`raster:bits_per_sample` from NBITS, shared on the asset."""
+def test_bits_per_sample_and_resolution():
+    """`raster:bits_per_sample` from NBITS; resolution and gsd in meters, shared on the asset."""
     with _memfile(nbits=12) as memfile, memfile.open() as src_dst:
         item = create_stac_item(src_dst, input_datetime=input_date, with_raster=True)
     assert item.validate()
-    assert item.to_dict()["assets"]["asset"]["raster:bits_per_sample"] == 12
+    asset = item.to_dict()["assets"]["asset"]
+    assert asset["raster:bits_per_sample"] == 12
+    # 10 x 20 m pixels: the average is 15 m
+    assert asset["raster:spatial_resolution"] == 15.0
+    assert item.properties["gsd"] == 15.0
 
-    # No NBITS: no bits_per_sample
-    with _memfile() as memfile, memfile.open() as src_dst:
+    # No NBITS: no bits_per_sample. Degrees (0.001 near the equator) are converted to meters
+    with (
+        _memfile(crs="EPSG:4326", transform=from_origin(11, 1, 0.001, 0.001)) as memfile,
+        memfile.open() as src_dst,
+    ):
         item = create_stac_item(src_dst, input_datetime=input_date, with_raster=True)
-    assert "raster:bits_per_sample" not in item.to_dict()["assets"]["asset"]
+    asset = item.to_dict()["assets"]["asset"]
+    assert "raster:bits_per_sample" not in asset
+    assert asset["raster:spatial_resolution"] == pytest.approx(111, rel=0.01)
+    assert item.properties["gsd"] == asset["raster:spatial_resolution"]
+
+    # No CRS: no resolution or gsd
+    with _memfile(crs=None) as memfile, memfile.open() as src_dst:
+        item = create_stac_item(src_dst, input_datetime=input_date, with_raster=True)
+    assert "raster:spatial_resolution" not in item.to_dict()["assets"]["asset"]
+    assert "gsd" not in item.properties
 
 
 def test_proj_centroid():
