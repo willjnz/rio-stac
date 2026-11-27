@@ -1,5 +1,10 @@
 ## Unreleased
 
+* **breaking**: write STAC 1.1 items with the raster and eo extensions `v2.0.0` (was `v1.1.0`), and require pystac >= 1.12 (which writes `"stac_version": "1.1.0"`). Band metadata moves from `raster:bands`/`eo:bands` to the STAC 1.1 `bands` array: `name`, `description`, `data_type`, `nodata`, `unit` and `statistics` are core fields, and `scale`, `offset`, `sampling` and `histogram` become `raster:scale`, `raster:offset`, `raster:sampling` and `raster:histogram`. An extension is only declared when one of its fields is written (eo only for `eo:*` fields such as `eo:cloud_cover`). When `assets` is passed, extensions are declared from their fields, and `raster:bands`/`eo:bands` raise a `ValueError`. For STAC 1.0 output, use rio-stac 0.12 (closes https://github.com/developmentseed/rio-stac/issues/92)
+* **breaking**: `get_raster_info` returns raster v2.0.0 field names (`raster:scale`, `raster:offset`, `raster:sampling`, `raster:histogram`)
+* **breaking**: rename `get_eobands_info` to `get_eo_info`
+* add `get_bands_info` to build the `bands` asset field from `get_raster_info` and `get_eo_info`
+* band metadata follows the [STAC best practices for bands](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands): values shared by all bands (e.g. `data_type`, `nodata`, `raster:scale`) are written on the asset, and a single band is written directly on the asset without `name`. `name`, `description`, `statistics` and `raster:histogram` always stay per band
 * **breaking**: update the `projection` extension to `v2.1.0` (was `v1.1.0`). `proj:epsg` (e.g. `32621`) becomes `proj:code` (e.g. `"EPSG:32621"`, or `null` when there is no EPSG code), and `proj:bbox`/`proj:geometry` are omitted when the CRS is WGS84. `get_projection_info` returns `code` instead of `epsg`.
 
 ## 0.12.0 (2025-09-17)

@@ -78,7 +78,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         "datetime": "2021-03-19T02:27:33.266356Z"
     }
     ```
-    
+
     `proj:bbox` and `proj:geometry` are omitted when the CRS is WGS84 as per v2.1.0.
 
     You can pass `--without-proj` to disable it.
@@ -89,35 +89,33 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     link: https://github.com/stac-extensions/raster
 
+    rio-stac writes raster `v2.0.0`: band metadata goes in the STAC 1.1 `bands` array. `data_type`, `nodata`, `unit` and `statistics` are core fields; `scale`, `offset`, `sampling` and `histogram` get the `raster:` prefix. Following the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands), values shared by all bands are written on the asset, and a single band is written directly on the asset:
+
     ```json
-    "raster:bands": [
-      {
-        "sampling": "point",
-        "data_type": "uint16",
-        "scale": 1,
-        "offset": 0,
-        "statistics": {
-          "mean": 2107.524612053134,
-          "minimum": 1,
-          "maximum": 7872,
-          "stdev": 2271.0065537857326,
-          "valid_percent": 9.564764936336924e-05
-        },
-        "histogram": {
-          "count": 11,
-          "min": 1,
-          "max": 7872,
-          "buckets": [503460, 0, 0, 161792, 283094, 0, 0, 0, 87727, 9431]
-        }
-      }
-    ]
+    "data_type": "uint16",
+    "raster:scale": 1.0,
+    "raster:offset": 0.0,
+    "raster:sampling": "point",
+    "statistics": {
+      "mean": 2107.524612053134,
+      "minimum": 1,
+      "maximum": 7872,
+      "stddev": 2271.006553785732,
+      "valid_percent": 9.564764936336924e-05
+    },
+    "raster:histogram": {
+      "count": 11,
+      "min": 1.0,
+      "max": 7872.0,
+      "buckets": [503460, 0, 0, 161792, 283094, 0, 0, 0, 87727, 9431]
+    }
     ```
 
     You can pass `--without-raster` to disable it.
 
 - **eo extension** (--with-eo / --without-eo)
 
-    By default the `eo` extension and properties will be added to the item. The `eo:cloud_cover` value will be fetched from [GDAL Raster data model](https://gdal.org/en/stable/user/raster_data_model.html) metadata.
+    By default the `eo` properties will be added to the item, and the `eo` extension is declared when one is written. The `eo:cloud_cover` value will be fetched from [GDAL Raster data model](https://gdal.org/en/stable/user/raster_data_model.html) metadata.
 
     link: https://github.com/stac-extensions/eo/
 
@@ -126,19 +124,28 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     "eo:cloud_cover": 2
     ```
 
-    Asset's bands
+    The cloud cover is the `CLOUDCOVER` item of GDAL's [IMAGERY metadata domain](https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing). GDAL fills it from sensor metadata files next to the image, e.g. the DigitalGlobe (WorldView) `.xml` next to `tests/fixtures/dataset_cloud_date_metadata.tif`:
+
+    ```bash
+    $ rio info --tags --namespace IMAGERY tests/fixtures/dataset_cloud_date_metadata.tif
+    {"ACQUISITIONDATETIME": "2011-05-01 13:00:00", "CLOUDCOVER": "2", "SATELLITEID": "WV03"}
+    ```
+
+    You can also set it on a GeoTIFF yourself, e.g. with rasterio: `dst.update_tags(ns="IMAGERY", CLOUDCOVER=2)`. Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`; the `eo` extension is declared for them too.
+
+    Asset's bands: `name` and `description` are STAC 1.1 core fields, written in `bands` (or `description` directly on the asset for a single band). The `eo` extension (`v2.0.0`) is only declared when an `eo:*` field such as `eo:cloud_cover` is written.
     ```json
-    "eo:bands": [
+    "bands": [
       {
         "name": "b1",
         "description": "red"
       },
       {
-        "name": "b2"
+        "name": "b2",
         "description": "green"
       },
       {
-        "name": "b3"
+        "name": "b3",
         "description": "blue"
       }
     ],
@@ -199,8 +206,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "stac_version": "1.1.0",
   "stac_extensions": [
     "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-    "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
+    "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
   ],
   "id": "dataset_cog.tif",
   "geometry": {
@@ -292,44 +298,35 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "assets": {
     "asset": {
       "href": "/Users/vincentsarago/Dev/DevSeed/rio-stac/tests/fixtures/dataset_cog.tif",
-      "raster:bands": [
-        {
-          "data_type": "uint16",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "point",
-          "statistics": {
-            "mean": 2107.524612053134,
-            "minimum": 1,
-            "maximum": 7872,
-            "stddev": 2271.006553785732,
-            "valid_percent": 0.00009564764936336924
-          },
-          "histogram": {
-            "count": 11,
-            "min": 1.0,
-            "max": 7872.0,
-            "buckets": [
-              503460,
-              0,
-              0,
-              161792,
-              283094,
-              0,
-              0,
-              0,
-              87727,
-              9431
-            ]
-          }
-        }
-      ],
-      "eo:bands": [
-        {
-          "name": "b1",
-          "description": "gray"
-        }
-      ],
+      "description": "gray",
+      "data_type": "uint16",
+      "raster:scale": 1.0,
+      "raster:offset": 0.0,
+      "raster:sampling": "point",
+      "statistics": {
+        "mean": 2107.524612053134,
+        "minimum": 1,
+        "maximum": 7872,
+        "stddev": 2271.006553785732,
+        "valid_percent": 0.00009564764936336924
+      },
+      "raster:histogram": {
+        "count": 11,
+        "min": 1.0,
+        "max": 7872.0,
+        "buckets": [
+          503460,
+          0,
+          0,
+          161792,
+          283094,
+          0,
+          0,
+          0,
+          87727,
+          9431
+        ]
+      },
       "roles": []
     }
   }
@@ -350,8 +347,8 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "stac_version": "1.1.0",
   "stac_extensions": [
     "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-    "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
+    "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
+    "https://stac-extensions.github.io/eo/v2.0.0/schema.json"
   ],
   "id": "COG",
   "geometry": {
@@ -419,12 +416,14 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     "mosaic": {
       "href": "https://somewhere.overtherainbow.io/dataset_cloud_date_metadata.tif",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
-      "raster:bands": [
+      "data_type": "uint8",
+      "raster:scale": 1.0,
+      "raster:offset": 0.0,
+      "raster:sampling": "area",
+      "bands": [
         {
-          "data_type": "uint8",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "area",
+          "name": "b1",
+          "description": "red",
           "statistics": {
             "mean": 65.4388,
             "minimum": 0,
@@ -432,7 +431,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "stddev": 47.33717201692556,
             "valid_percent": 0.04
           },
-          "histogram": {
+          "raster:histogram": {
             "count": 11,
             "min": 0.0,
             "max": 216.0,
@@ -451,10 +450,8 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
           }
         },
         {
-          "data_type": "uint8",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "area",
+          "name": "b2",
+          "description": "green",
           "statistics": {
             "mean": 91.0308,
             "minimum": 0,
@@ -462,7 +459,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "stddev": 62.43964326739864,
             "valid_percent": 0.04
           },
-          "histogram": {
+          "raster:histogram": {
             "count": 11,
             "min": 0.0,
             "max": 222.0,
@@ -481,10 +478,8 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
           }
         },
         {
-          "data_type": "uint8",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "area",
+          "name": "b3",
+          "description": "blue",
           "statistics": {
             "mean": 27.568,
             "minimum": 0,
@@ -492,7 +487,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
             "stddev": 24.540362181516393,
             "valid_percent": 0.04
           },
-          "histogram": {
+          "raster:histogram": {
             "count": 11,
             "min": 0.0,
             "max": 181.0,
@@ -509,20 +504,6 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
               4
             ]
           }
-        }
-      ],
-      "eo:bands": [
-        {
-          "name": "b1",
-          "description": "red"
-        },
-        {
-          "name": "b2",
-          "description": "green"
-        },
-        {
-          "name": "b3",
-          "description": "blue"
         }
       ],
       "roles": []

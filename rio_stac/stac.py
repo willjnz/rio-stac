@@ -16,11 +16,29 @@ from rasterio.features import bounds as feature_bounds
 from rasterio.io import DatasetReader, DatasetWriter, MemoryFile
 from rasterio.vrt import WarpedVRT
 
+# pystac's extension classes don't write these versions yet (raster and eo v2.0.0 need
+# https://github.com/stac-utils/pystac/pull/1829), so rio-stac writes the fields as plain dicts.
 PROJECTION_EXT_VERSION = "v2.1.0"
-RASTER_EXT_VERSION = "v1.1.0"
-EO_EXT_VERSION = "v1.1.0"
+RASTER_EXT_VERSION = "v2.0.0"
+EO_EXT_VERSION = "v2.0.0"
+
+# Band fields that are written once on the asset when all bands have the same value. Any other field
+# (e.g. `name`, `description`, `statistics`, `raster:histogram`) describes one band and stays in `bands`.
+_SHAREABLE = {
+    "data_type",
+    "nodata",
+    "unit",
+    "raster:scale",
+    "raster:offset",
+    "raster:sampling",
+}
 
 EPSG_4326 = rasterio.crs.CRS.from_epsg(4326)
+
+
+def _extension_url(name: str, version: str) -> str:
+    """Get a STAC extension schema URL."""
+    return f"https://stac-extensions.github.io/{name}/{version}/schema.json"
 
 
 def bbox_to_geom(bbox: Tuple[float, float, float, float]) -> Dict:
@@ -133,10 +151,10 @@ def get_projection_info(
     return meta
 
 
-def get_eobands_info(
+def get_eo_info(
     src_dst: Union[DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
 ) -> List:
-    """Get eo:bands metadata.
+    """Get band names and descriptions (STAC 1.1 core fields, written in `bands`).
 
     see: https://github.com/stac-extensions/eo#item-properties-or-asset-fields
 
@@ -158,6 +176,52 @@ def get_eobands_info(
         eo_bands.append(band_meta)
 
     return eo_bands
+
+
+# The band dicts match `pystac.Band.to_dict()` from https://github.com/stac-utils/pystac/pull/1829, so once
+# it is released they can become `pystac.Band.from_dict(band)` and `pystac.Asset(bands=...)`.
+def get_bands_info(raster_bands: List[Dict], eo_bands: List[Dict]) -> Dict:
+    """Get the STAC 1.1 `bands` asset field from `get_raster_info` and `get_eo_info` output.
+
+    raster and eo v2.0.0 write band metadata in the STAC 1.1 core `bands` array.
+
+    Following the STAC best practices, values shared by all bands are written on the asset, and a single
+    band is written directly on the asset (without `name`).
+
+    see:
+    - https://github.com/radiantearth/stac-spec/blob/v1.1.0/commons/common-metadata.md#bands
+    - https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands
+
+    """
+    bands = []
+    for ix in range(max(len(raster_bands), len(eo_bands))):
+        band: Dict = {"name": f"b{ix + 1}"}
+        if eo_bands:
+            band.update(eo_bands[ix])
+        if raster_bands:
+            band.update(raster_bands[ix])
+        bands.append(band)
+
+    # `with_raster` and `with_eo` are both off
+    if not bands:
+        return {}
+
+    # A single band goes on the asset. `name` is only allowed in bands.
+    if len(bands) == 1:
+        fields = bands[0]
+        fields.pop("name")
+        return fields
+
+    shared = {
+        key: value
+        for key, value in bands[0].items()
+        if key in _SHAREABLE and all(key in band and band[key] == value for band in bands)
+    }
+    for band in bands:
+        for key in shared:
+            del band[key]
+
+    return {**shared, "bands": bands}
 
 
 def _get_stats(
@@ -195,7 +259,7 @@ def _get_stats(
         else:
             raise e
 
-    stats["histogram"] = {
+    stats["raster:histogram"] = {
         "count": len(edges),
         "min": float(edges.min()),
         "max": float(edges.max()),
@@ -211,9 +275,12 @@ def get_raster_info(  # noqa: C901
     histogram_bins: Union[int, str, Sequence] = 10,
     histogram_range: Optional[Tuple[float, float]] = None,
 ) -> List[Dict]:
-    """Get raster metadata.
+    """Get raster band metadata (STAC 1.1 core and raster v2.0.0 fields).
 
-    see: https://github.com/stac-extensions/raster#raster-band-object
+    `data_type`, `nodata`, `unit` and `statistics` are STAC 1.1 core fields; the other fields get the
+    `raster:` prefix.
+
+    see: https://github.com/stac-extensions/raster/tree/v2.0.0
 
     """
     height = src_dst.height
@@ -236,11 +303,11 @@ def get_raster_info(  # noqa: C901
     for band in src_dst.indexes:
         value = {
             "data_type": src_dst.dtypes[band - 1],
-            "scale": src_dst.scales[band - 1],
-            "offset": src_dst.offsets[band - 1],
+            "raster:scale": src_dst.scales[band - 1],
+            "raster:offset": src_dst.offsets[band - 1],
         }
         if area_or_point:
-            value["sampling"] = area_or_point
+            value["raster:sampling"] = area_or_point
 
         # If the Nodata is not set we don't forward it.
         if src_dst.nodata is not None:
@@ -306,7 +373,7 @@ def get_media_type(
     return None
 
 
-def create_stac_item(
+def create_stac_item(  # noqa: C901
     source: Union[str, DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
     input_datetime: Optional[datetime.datetime] = None,
     extensions: Optional[List[str]] = None,
@@ -406,9 +473,7 @@ def create_stac_item(
 
         # add projection properties
         if with_proj:
-            extensions.append(
-                f"https://stac-extensions.github.io/projection/{PROJECTION_EXT_VERSION}/schema.json",
-            )
+            extensions.append(_extension_url("projection", PROJECTION_EXT_VERSION))
 
             properties.update(
                 {
@@ -418,32 +483,44 @@ def create_stac_item(
             )
 
         # add raster properties
-        raster_info = {}
+        raster_bands: List[Dict] = []
         if with_raster:
-            extensions.append(
-                f"https://stac-extensions.github.io/raster/{RASTER_EXT_VERSION}/schema.json",
+            raster_bands = get_raster_info(
+                dataset,
+                max_size=raster_max_size,
+                histogram_bins=histogram_bins,
+                histogram_range=histogram_range,
             )
 
-            raster_info = {
-                "raster:bands": get_raster_info(
-                    dataset,
-                    max_size=raster_max_size,
-                    histogram_bins=histogram_bins,
-                    histogram_range=histogram_range,
-                )
-            }
-
-        eo_info: Dict[str, List] = {}
+        eo_bands: List[Dict] = []
         if with_eo:
-            extensions.append(
-                f"https://stac-extensions.github.io/eo/{EO_EXT_VERSION}/schema.json",
-            )
-
-            eo_info = {"eo:bands": get_eobands_info(src_dst)}
+            eo_bands = get_eo_info(src_dst)
 
             cloudcover = src_dst.get_tag_item("CLOUDCOVER", "IMAGERY")
             if cloudcover is not None:
                 properties.update({"eo:cloud_cover": int(cloudcover)})
+
+        # Band fields are only written on the asset rio-stac creates. User `assets` are written as-is.
+        band_fields = {} if assets else get_bands_info(raster_bands, eo_bands)
+        asset_fields = (
+            [asset.extra_fields for asset in assets.values()] if assets else [band_fields]
+        )
+
+        # To be valid, an extension is declared only when one of its fields is written
+        band_keys = {
+            key
+            for fields in asset_fields
+            for band in [fields, *fields.get("bands", [])]
+            for key in band
+        }
+        if band_keys & {"raster:bands", "eo:bands"}:
+            raise ValueError(
+                "`raster:bands` and `eo:bands` are replaced by `bands` in STAC 1.1 (raster and eo v2.0.0)."
+            )
+        if any(key.startswith("raster:") for key in band_keys):
+            extensions.append(_extension_url("raster", RASTER_EXT_VERSION))
+        if with_eo and any(key.startswith("eo:") for key in [*band_keys, *properties]):
+            extensions.append(_extension_url("eo", EO_EXT_VERSION))
 
     # item
     item = pystac.Item(
@@ -477,7 +554,8 @@ def create_stac_item(
             asset=pystac.Asset(
                 href=asset_href or dataset.name,
                 media_type=media_type,
-                extra_fields={**raster_info, **eo_info},
+                # TODO: pystac should soon release Asset.bands
+                extra_fields=band_fields,
                 roles=asset_roles,
             ),
         )

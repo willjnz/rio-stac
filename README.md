@@ -46,6 +46,12 @@ $ pip install rio-stac
 $ pip install git+http://github.com/developmentseed/rio-stac
 ```
 
+### STAC version
+
+rio-stac writes STAC 1.1 items (it requires pystac >= 1.12, which writes `"stac_version": "1.1.0"`), with the projection `v2.1.0`, raster `v2.0.0` and eo `v2.0.0` extensions. Band metadata follows the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands): values shared by all bands are written on the asset, and a single band is written directly on the asset.
+
+To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), downgrade rio-stac and pystac.
+
 ### Example
 
 ```json
@@ -55,8 +61,7 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "stac_version": "1.1.0",
   "stac_extensions": [
     "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
-    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
-    "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
+    "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
   ],
   "id": "dataset_cog.tif",
   "geometry": {
@@ -148,44 +153,35 @@ $ pip install git+http://github.com/developmentseed/rio-stac
   "assets": {
     "asset": {
       "href": "/Users/vincentsarago/Dev/DevSeed/rio-stac/tests/fixtures/dataset_cog.tif",
-      "raster:bands": [
-        {
-          "data_type": "uint16",
-          "scale": 1.0,
-          "offset": 0.0,
-          "sampling": "point",
-          "statistics": {
-            "mean": 2107.524612053134,
-            "minimum": 1,
-            "maximum": 7872,
-            "stddev": 2271.006553785732,
-            "valid_percent": 0.00009564764936336924
-          },
-          "histogram": {
-            "count": 11,
-            "min": 1.0,
-            "max": 7872.0,
-            "buckets": [
-              503460,
-              0,
-              0,
-              161792,
-              283094,
-              0,
-              0,
-              0,
-              87727,
-              9431
-            ]
-          }
-        }
-      ],
-      "eo:bands": [
-        {
-          "name": "b1",
-          "description": "gray"
-        }
-      ],
+      "description": "gray",
+      "data_type": "uint16",
+      "raster:scale": 1.0,
+      "raster:offset": 0.0,
+      "raster:sampling": "point",
+      "statistics": {
+        "mean": 2107.524612053134,
+        "minimum": 1,
+        "maximum": 7872,
+        "stddev": 2271.006553785732,
+        "valid_percent": 0.00009564764936336924
+      },
+      "raster:histogram": {
+        "count": 11,
+        "min": 1.0,
+        "max": 7872.0,
+        "buckets": [
+          503460,
+          0,
+          0,
+          161792,
+          283094,
+          0,
+          0,
+          0,
+          87727,
+          9431
+        ]
+      },
       "roles": []
     }
   }
