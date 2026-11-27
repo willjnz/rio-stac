@@ -10,6 +10,25 @@ from rio_stac.scripts.cli import stac
 PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
+def check_asset(asset, data_type, sampling):
+    """Single band fields are written directly on the asset."""
+    assert asset["data_type"] == data_type
+    assert asset["description"] == "gray"
+    assert asset["raster:scale"] == 1.0
+    assert asset["raster:offset"] == 0.0
+    assert asset["raster:sampling"] == sampling
+    assert set(asset["statistics"]) == {
+        "mean",
+        "minimum",
+        "maximum",
+        "stddev",
+        "valid_percent",
+    }
+    assert set(asset["raster:histogram"]) == {"count", "min", "max", "buckets"}
+    assert "bands" not in asset
+    assert "name" not in asset
+
+
 def test_rio_stac_cli(runner):
     """Should work as expected."""
     with runner.isolated_filesystem():
@@ -19,7 +38,6 @@ def test_rio_stac_cli(runner):
         assert result.exit_code == 0
         stac_item = json.loads(result.output)
         assert stac_item["type"] == "Feature"
-        assert stac_item["assets"]["asset"]
         assert stac_item["assets"]["asset"]["href"] == src_path
         assert stac_item["links"] == []
         assert stac_item["stac_extensions"] == [
@@ -28,9 +46,7 @@ def test_rio_stac_cli(runner):
         ]
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        asset = stac_item["assets"]["asset"]
-        assert asset["data_type"] == "uint16"
-        assert asset["description"] == "gray"
+        check_asset(stac_item["assets"]["asset"], "uint16", "point")
 
         result = runner.invoke(
             stac,
@@ -101,7 +117,6 @@ def test_rio_stac_cli(runner):
         with open("item.json", "r") as f:
             stac_item = json.loads(f.read())
         assert stac_item["type"] == "Feature"
-        assert stac_item["assets"]["asset"]
         assert stac_item["links"] == []
         assert stac_item["stac_extensions"] == [
             "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
@@ -109,7 +124,7 @@ def test_rio_stac_cli(runner):
         ]
         assert "datetime" in stac_item["properties"]
         assert stac_item["properties"]["proj:code"] == "EPSG:32621"
-        assert stac_item["assets"]["asset"]["data_type"] == "uint16"
+        check_asset(stac_item["assets"]["asset"], "uint16", "point")
 
         with runner.isolated_filesystem():
             src_path = os.path.join(PREFIX, "dataset_nocrs.tif")
@@ -118,7 +133,6 @@ def test_rio_stac_cli(runner):
             assert result.exit_code == 0
             stac_item = json.loads(result.output)
             assert stac_item["type"] == "Feature"
-            assert stac_item["assets"]["asset"]
             assert stac_item["assets"]["asset"]["href"] == src_path
             assert stac_item["links"] == []
             assert stac_item["stac_extensions"] == [
@@ -128,6 +142,5 @@ def test_rio_stac_cli(runner):
             assert "datetime" in stac_item["properties"]
             assert stac_item["properties"]["proj:code"] == "EPSG:3035"
             assert "proj:projjson" not in stac_item["properties"]
-            asset = stac_item["assets"]["asset"]
-            assert asset["data_type"] == "float32"
-            assert asset["description"] == "gray"
+            check_asset(stac_item["assets"]["asset"], "float32", "area")
+            assert stac_item["assets"]["asset"]["nodata"] == -3.3999999521443642e38

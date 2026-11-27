@@ -151,8 +151,7 @@ def get_projection_info(
     return meta
 
 
-# TODO: get_eobands_info is no longer a good name. Renaming is a breaking change.
-def get_eobands_info(
+def get_eo_info(
     src_dst: Union[DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
 ) -> List:
     """Get band names and descriptions (STAC 1.1 core fields, written in `bands`).
@@ -182,7 +181,7 @@ def get_eobands_info(
 # The band dicts match `pystac.Band.to_dict()` from https://github.com/stac-utils/pystac/pull/1829, so once
 # it is released they can become `pystac.Band.from_dict(band)` and `pystac.Asset(bands=...)`.
 def get_bands_info(raster_bands: List[Dict], eo_bands: List[Dict]) -> Dict:
-    """Get the STAC 1.1 `bands` asset field from `get_raster_info` and `get_eobands_info` output.
+    """Get the STAC 1.1 `bands` asset field from `get_raster_info` and `get_eo_info` output.
 
     raster and eo v2.0.0 write band metadata in the STAC 1.1 core `bands` array.
 
@@ -203,6 +202,7 @@ def get_bands_info(raster_bands: List[Dict], eo_bands: List[Dict]) -> Dict:
             band.update(raster_bands[ix])
         bands.append(band)
 
+    # `with_raster` and `with_eo` are both off
     if not bands:
         return {}
 
@@ -373,7 +373,7 @@ def get_media_type(
     return None
 
 
-def create_stac_item(
+def create_stac_item(  # noqa: C901
     source: Union[str, DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
     input_datetime: Optional[datetime.datetime] = None,
     extensions: Optional[List[str]] = None,
@@ -494,26 +494,32 @@ def create_stac_item(
 
         eo_bands: List[Dict] = []
         if with_eo:
-            eo_bands = get_eobands_info(src_dst)
+            eo_bands = get_eo_info(src_dst)
 
             cloudcover = src_dst.get_tag_item("CLOUDCOVER", "IMAGERY")
             if cloudcover is not None:
                 properties.update({"eo:cloud_cover": int(cloudcover)})
 
-        # Band fields are only written on the asset rio-stac creates.
+        # Band fields are only written on the asset rio-stac creates. User `assets` are written as-is.
         band_fields = {} if assets else get_bands_info(raster_bands, eo_bands)
+        asset_fields = (
+            [asset.extra_fields for asset in assets.values()] if assets else [band_fields]
+        )
 
         # To be valid, an extension is declared only when one of its fields is written
         band_keys = {
             key
-            for fields in [band_fields, *band_fields.get("bands", [])]
-            for key in fields
+            for fields in asset_fields
+            for band in [fields, *fields.get("bands", [])]
+            for key in band
         }
+        if band_keys & {"raster:bands", "eo:bands"}:
+            raise ValueError(
+                "`raster:bands` and `eo:bands` are replaced by `bands` in STAC 1.1 (raster and eo v2.0.0)."
+            )
         if any(key.startswith("raster:") for key in band_keys):
             extensions.append(_extension_url("raster", RASTER_EXT_VERSION))
-        # rio-stac writes no eo:* band fields (`name` and `description` are core), so eo is only declared
-        # for eo:* item properties: `eo:cloud_cover` from GDAL metadata, or ones passed in `properties`.
-        if with_eo and any(key.startswith("eo:") for key in properties):
+        if with_eo and any(key.startswith("eo:") for key in [*band_keys, *properties]):
             extensions.append(_extension_url("eo", EO_EXT_VERSION))
 
     # item

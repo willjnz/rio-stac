@@ -214,10 +214,20 @@ def test_create_item_raster():
     assert item_dict["stac_extensions"] == [
         "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
     ]
-    # A single band is written directly on the asset
-    assert "bands" not in item_dict["assets"]["asset"]
-    assert "name" not in item_dict["assets"]["asset"]
-    assert item_dict["assets"]["asset"]["data_type"] == "uint16"
+    # A single band is written directly on the asset (no `bands` or `name`)
+    asset = item_dict["assets"]["asset"]
+    assert set(asset) == {
+        "href",
+        "type",
+        "roles",
+        "data_type",
+        "raster:scale",
+        "raster:offset",
+        "raster:sampling",
+        "statistics",
+        "raster:histogram",
+    }
+    assert asset["data_type"] == "uint16"
 
     # Nodata=None not in the properties
     assert "nodata" not in item_dict["assets"]["asset"]
@@ -511,7 +521,7 @@ def test_get_bands_info_shared_values():
 
 
 def test_create_item_assets_no_band_extensions():
-    """When `assets` is passed, no band fields are written, so raster and eo are not declared."""
+    """When `assets` is passed, extensions are declared from their fields."""
     src_path = os.path.join(PREFIX, "dataset_cog.tif")
     item = create_stac_item(
         src_path,
@@ -521,6 +531,26 @@ def test_create_item_assets_no_band_extensions():
     )
     assert item.validate()
     assert item.to_dict()["stac_extensions"] == []
+
+    bands = {"bands": [{"name": "b1", "eo:common_name": "red", "raster:scale": 2.0}]}
+    item = create_stac_item(
+        src_path,
+        assets={"cog": pystac.Asset(href=src_path, extra_fields=bands)},
+        with_eo=True,
+    )
+    assert item.validate()
+    assert item.to_dict()["stac_extensions"] == [
+        "https://stac-extensions.github.io/raster/v2.0.0/schema.json",
+        "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
+    ]
+
+    # STAC 1.0 band fields
+    for key in ["raster:bands", "eo:bands"]:
+        with pytest.raises(ValueError, match="replaced by `bands`"):
+            create_stac_item(
+                src_path,
+                assets={"cog": pystac.Asset(href=src_path, extra_fields={key: []})},
+            )
 
 
 def test_create_item_eo_properties():
