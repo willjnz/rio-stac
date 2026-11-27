@@ -13,7 +13,9 @@ PREFIX = os.path.join(os.path.dirname(__file__), "fixtures")
 def check_asset(asset, data_type, sampling):
     """Single band fields are written directly on the asset."""
     assert asset["data_type"] == data_type
-    assert asset["description"] == "gray"
+    # `gray` color interpretation is not an eo common band name
+    assert "description" not in asset
+    assert "eo:common_name" not in asset
     assert asset["raster:scale"] == 1.0
     assert asset["raster:offset"] == 0.0
     assert asset["raster:sampling"] == sampling

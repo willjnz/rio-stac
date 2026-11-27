@@ -126,20 +126,20 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     The cloud cover is the `CLOUDCOVER` item of GDAL's [IMAGERY metadata domain](https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing). Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`.
 
-    Asset's bands: `name` and `description` are written in `bands` (or `description` directly on the asset for a single band).
+    Asset's bands: `name` and the GDAL band `description` are core fields. `eo:common_name` is written when the band's color interpretation is an [eo common band name](https://github.com/stac-extensions/eo/tree/v2.0.0#common-band-names) (e.g. `red`). A single band's fields are written directly on the asset.
     ```json
     "bands": [
       {
         "name": "b1",
-        "description": "red"
+        "eo:common_name": "red"
       },
       {
         "name": "b2",
-        "description": "green"
+        "eo:common_name": "green"
       },
       {
         "name": "b3",
-        "description": "blue"
+        "eo:common_name": "blue"
       }
     ],
     ```
@@ -291,7 +291,6 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
   "assets": {
     "asset": {
       "href": "/Users/vincentsarago/Dev/DevSeed/rio-stac/tests/fixtures/dataset_cog.tif",
-      "description": "gray",
       "data_type": "uint16",
       "raster:scale": 1.0,
       "raster:offset": 0.0,
@@ -416,7 +415,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
       "bands": [
         {
           "name": "b1",
-          "description": "red",
+          "eo:common_name": "red",
           "statistics": {
             "mean": 65.4388,
             "minimum": 0,
@@ -444,7 +443,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         },
         {
           "name": "b2",
-          "description": "green",
+          "eo:common_name": "green",
           "statistics": {
             "mean": 91.0308,
             "minimum": 0,
@@ -472,7 +471,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         },
         {
           "name": "b3",
-          "description": "blue",
+          "eo:common_name": "blue",
           "statistics": {
             "mean": 27.568,
             "minimum": 0,

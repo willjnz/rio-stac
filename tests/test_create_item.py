@@ -11,7 +11,7 @@ import pystac
 import pytest
 import rasterio
 
-from rio_stac.stac import create_stac_item, get_bands_info, get_raster_info
+from rio_stac.stac import create_stac_item, get_raster_info, merge_band_fields
 
 from .conftest import requires_hdf4, requires_hdf5
 
@@ -299,9 +299,10 @@ def test_create_item_eo():
     assert item.validate()
     item_dict = item.to_dict()
     assert item_dict["links"] == []
-    # no eo:* field (no cloud cover), so no eo extension
+    # no eo:* field (no cloud cover, and `gray` is not an eo common band name), so no eo extension
     assert item_dict["stac_extensions"] == []
-    assert item_dict["assets"]["asset"]["description"] == "gray"
+    assert "description" not in item_dict["assets"]["asset"]
+    assert "eo:common_name" not in item_dict["assets"]["asset"]
     assert "bands" not in item_dict["assets"]["asset"]
 
     src_path = os.path.join(PREFIX, "dataset_description.tif")
@@ -319,11 +320,26 @@ def test_create_item_eo():
         "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
     ]
     assert item_dict["properties"]["eo:cloud_cover"] == 2
+    # eo:common_name from the RGB color interpretation
     assert item_dict["assets"]["asset"]["bands"] == [
-        {"name": "b1", "description": "red"},
-        {"name": "b2", "description": "green"},
-        {"name": "b3", "description": "blue"},
+        {"name": "b1", "eo:common_name": "red"},
+        {"name": "b2", "eo:common_name": "green"},
+        {"name": "b3", "eo:common_name": "blue"},
     ]
+
+
+def test_create_item_extensions_unique():
+    """Extensions passed by the user and added by rio-stac are listed once."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    raster = "https://stac-extensions.github.io/raster/v2.0.0/schema.json"
+    extensions = [raster]
+    item = create_stac_item(
+        src_path, input_datetime=input_date, extensions=extensions, with_raster=True
+    )
+    assert item.validate()
+    assert item.stac_extensions == [raster]
+    # the user's list is not modified
+    assert extensions == [raster]
 
 
 def test_create_item_datetime():
@@ -446,7 +462,7 @@ def test_stats_with_nan_missing_nodata():
         assert info[0]["statistics"]["maximum"] > 0
 
 
-def test_get_bands_info():
+def test_merge_band_fields():
     """raster and eo band metadata is merged into STAC 1.1 `bands`."""
     raster = [
         {
@@ -462,7 +478,7 @@ def test_get_bands_info():
     ]
     eo = [{"name": "b1", "description": "red"}]
     # A single band is written directly on the asset, without `name`
-    assert get_bands_info(raster, eo) == {
+    assert merge_band_fields(raster, eo) == {
         "description": "red",
         "data_type": "uint8",
         "raster:scale": 1.0,
@@ -473,10 +489,10 @@ def test_get_bands_info():
         "statistics": {"minimum": 0},
         "raster:histogram": {"count": 10},
     }
-    assert get_bands_info([], []) == {}
+    assert merge_band_fields([], []) == {}
 
 
-def test_get_bands_info_shared_values():
+def test_merge_band_fields_shared_values():
     """Values shared by all bands move to the asset; per-band values stay in `bands`."""
     raster = [
         {
@@ -487,8 +503,8 @@ def test_get_bands_info_shared_values():
         }
         for unit in ["m", "m", "cm"]
     ]
-    eo = [{"name": f"b{ix}", "description": "same"} for ix in range(1, 4)]
-    assert get_bands_info(raster, eo) == {
+    eo = [{"name": f"b{i}", "description": "same"} for i in range(1, 4)]
+    assert merge_band_fields(raster, eo) == {
         "data_type": "uint8",
         "raster:scale": 1.0,
         "bands": [
@@ -514,7 +530,7 @@ def test_get_bands_info_shared_values():
         ],
     }
     # raster only: bands are named b1, b2
-    assert [band["name"] for band in get_bands_info(raster[:2], [])["bands"]] == [
+    assert [band["name"] for band in merge_band_fields(raster[:2], [])["bands"]] == [
         "b1",
         "b2",
     ]
@@ -546,7 +562,7 @@ def test_create_item_assets_no_band_extensions():
 
     # STAC 1.0 band fields
     for key in ["raster:bands", "eo:bands"]:
-        with pytest.raises(ValueError, match="replaced by `bands`"):
+        with pytest.warns(UserWarning, match="replaced by `bands`"):
             create_stac_item(
                 src_path,
                 assets={"cog": pystac.Asset(href=src_path, extra_fields={key: []})},
@@ -579,8 +595,8 @@ def test_create_item_shared_band_values():
     assert asset["data_type"] == "float32"
     assert asset["nodata"] == "nan"
     assert len(asset["bands"]) == 14
-    for ix, band in enumerate(asset["bands"], 1):
-        assert band["name"] == f"b{ix}"
+    for i, band in enumerate(asset["bands"], 1):
+        assert band["name"] == f"b{i}"
         assert "data_type" not in band
         assert "nodata" not in band
         assert "statistics" in band

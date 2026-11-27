@@ -153,7 +153,6 @@ To write STAC 1.0 items (`proj:epsg`, `raster:bands`, `eo:bands`), downgrade rio
   "assets": {
     "asset": {
       "href": "/Users/vincentsarago/Dev/DevSeed/rio-stac/tests/fixtures/dataset_cog.tif",
-      "description": "gray",
       "data_type": "uint16",
       "raster:scale": 1.0,
       "raster:offset": 0.0,
