@@ -3,6 +3,8 @@
 
 For more information about the `Item` specification, please see https://github.com/radiantearth/stac-spec/blob/master/item-spec/item-spec.md
 
+`rio-stac` follows the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md).
+
 # CLI
 
 ```
@@ -85,11 +87,9 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
 - **raster extension** (--with-raster / --without-raster)
 
-    By default the `raster` extension and properties will be added to the item.
+    By default the `raster` extension (v2.0.0) and properties will be added to the item.
 
     link: https://github.com/stac-extensions/raster
-
-    rio-stac writes raster `v2.0.0`: band metadata goes in the STAC 1.1 `bands` array. `data_type`, `nodata`, `unit` and `statistics` are core fields; `scale`, `offset`, `sampling` and `histogram` get the `raster:` prefix. Following the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands), values shared by all bands are written on the asset, and a single band is written directly on the asset:
 
     ```json
     "data_type": "uint16",
@@ -115,7 +115,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
 - **eo extension** (--with-eo / --without-eo)
 
-    By default the `eo` properties will be added to the item, and the `eo` extension is declared when one is written. The `eo:cloud_cover` value will be fetched from [GDAL Raster data model](https://gdal.org/en/stable/user/raster_data_model.html) metadata.
+    By default the `eo` properties will be added to the item, and the `eo` extension (v2.0.0) is declared when one is written. The `eo:cloud_cover` value will be fetched from [GDAL Raster data model](https://gdal.org/en/stable/user/raster_data_model.html) metadata.
 
     link: https://github.com/stac-extensions/eo/
 
@@ -124,16 +124,9 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
     "eo:cloud_cover": 2
     ```
 
-    The cloud cover is the `CLOUDCOVER` item of GDAL's [IMAGERY metadata domain](https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing). GDAL fills it from sensor metadata files next to the image, e.g. the DigitalGlobe (WorldView) `.xml` next to `tests/fixtures/dataset_cloud_date_metadata.tif`:
+    The cloud cover is the `CLOUDCOVER` item of GDAL's [IMAGERY metadata domain](https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing). Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`.
 
-    ```bash
-    $ rio info --tags --namespace IMAGERY tests/fixtures/dataset_cloud_date_metadata.tif
-    {"ACQUISITIONDATETIME": "2011-05-01 13:00:00", "CLOUDCOVER": "2", "SATELLITEID": "WV03"}
-    ```
-
-    You can also set it on a GeoTIFF yourself, e.g. with rasterio: `dst.update_tags(ns="IMAGERY", CLOUDCOVER=2)`. Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`; the `eo` extension is declared for them too.
-
-    Asset's bands: `name` and `description` are STAC 1.1 core fields, written in `bands` (or `description` directly on the asset for a single band). The `eo` extension (`v2.0.0`) is only declared when an `eo:*` field such as `eo:cloud_cover` is written.
+    Asset's bands: `name` and `description` are written in `bands` (or `description` directly on the asset for a single band).
     ```json
     "bands": [
       {
