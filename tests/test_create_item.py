@@ -13,7 +13,12 @@ import rasterio
 from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
 
-from rio_stac.stac import create_stac_item, get_bands_info, get_raster_info
+from rio_stac.stac import (
+    _get_centroid,
+    create_stac_item,
+    get_bands_info,
+    get_raster_info,
+)
 
 from .conftest import requires_hdf4, requires_hdf5
 
@@ -181,8 +186,9 @@ def test_proj_without_proj():
         "https://stac-extensions.github.io/projection/v2.1.0/schema.json",
     ]
     assert "datetime" in item_dict["properties"]
-    # No CRS: no code, and not WGS84 so `proj:bbox` is kept
+    # No CRS: no code, no centroid, and not WGS84 so `proj:bbox` is kept
     assert item_dict["properties"]["proj:code"] is None
+    assert "proj:centroid" not in item_dict["properties"]
     with rasterio.open(src_path) as src_dst:
         assert item_dict["properties"]["proj:bbox"] == list(src_dst.bounds)
 
@@ -311,15 +317,16 @@ def test_create_item_eo():
         "https://stac-extensions.github.io/eo/v2.0.0/schema.json",
     ]
     assert item_dict["properties"]["eo:cloud_cover"] == 2
+    # eo:common_name from the RGB colorinterp
     assert item_dict["assets"]["asset"]["bands"] == [
-        {"name": "b1", "description": "red"},
-        {"name": "b2", "description": "green"},
-        {"name": "b3", "description": "blue"},
+        {"name": "b1", "description": "red", "eo:common_name": "red"},
+        {"name": "b2", "description": "green", "eo:common_name": "green"},
+        {"name": "b3", "description": "blue", "eo:common_name": "blue"},
     ]
 
 
-def _memfile(**imagery):
-    """A 2 band uint16 GeoTIFF in memory, with optional IMAGERY tags."""
+def _memfile(nbits=None, **imagery):
+    """A 2 band uint16 GeoTIFF in memory, with optional NBITS and IMAGERY tags."""
     memfile = MemoryFile()
     profile = {
         "driver": "GTiff",
@@ -330,6 +337,8 @@ def _memfile(**imagery):
         "crs": "EPSG:32621",
         "transform": from_origin(373185, 8286015, 10, 20),
     }
+    if nbits:
+        profile["nbits"] = nbits
     with memfile.open(**profile) as dst:
         dst.write(numpy.arange(32, dtype="uint16").reshape(2, 4, 4))
         if imagery:
@@ -349,6 +358,45 @@ def test_cloud_cover_not_available():
         with _memfile(CLOUDCOVER=cloudcover) as memfile, memfile.open() as src_dst:
             item = create_stac_item(src_dst, input_datetime=input_date, with_eo=True)
         assert item.properties["eo:cloud_cover"] == expected
+
+
+def test_bits_per_sample():
+    """`raster:bits_per_sample` from NBITS, shared on the asset."""
+    with _memfile(nbits=12) as memfile, memfile.open() as src_dst:
+        item = create_stac_item(src_dst, input_datetime=input_date, with_raster=True)
+    assert item.validate()
+    assert item.to_dict()["assets"]["asset"]["raster:bits_per_sample"] == 12
+
+    # No NBITS: no bits_per_sample
+    with _memfile() as memfile, memfile.open() as src_dst:
+        item = create_stac_item(src_dst, input_datetime=input_date, with_raster=True)
+    assert "raster:bits_per_sample" not in item.to_dict()["assets"]["asset"]
+
+
+def test_proj_centroid():
+    """`proj:centroid` is the center of the raster bounds, in lat/lon."""
+    src_path = os.path.join(PREFIX, "dataset_cog.tif")
+    item = create_stac_item(src_path, input_datetime=input_date, with_proj=True)
+    assert item.validate()
+    assert item.properties["proj:centroid"] == {
+        "lat": 73.4675735659621,
+        "lon": -56.80794728322342,
+    }
+
+    # 0 to 360 longitudes are wrapped to -180/180: lon 190 is -170
+    with MemoryFile() as memfile:
+        with memfile.open(
+            driver="GTiff",
+            dtype="uint8",
+            count=1,
+            width=20,
+            height=20,
+            crs="EPSG:4326",
+            transform=from_origin(180, 10, 1, 1),
+        ) as dst:
+            dst.write(numpy.zeros((1, 20, 20), dtype="uint8"))
+        with memfile.open() as src_dst:
+            assert _get_centroid(src_dst) == (-170.0, 0.0)
 
 
 def test_datetime_now_warning():

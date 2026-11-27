@@ -75,11 +75,12 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         "proj:bbox": [...],
         "proj:shape": [8192, 8192],
         "proj:transform": [...],
+        "proj:centroid": {"lat": ..., "lon": ...},
         "datetime": "2021-03-19T02:27:33.266356Z"
     }
     ```
 
-    `proj:bbox` and `proj:geometry` are omitted when the CRS is WGS84 as per v2.1.0.
+    `proj:bbox` and `proj:geometry` are omitted when the CRS is WGS84 as per v2.1.0. `proj:centroid` is the center of the raster bounds, in lat/lon.
 
     You can pass `--without-proj` to disable it.
 
@@ -89,7 +90,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     link: https://github.com/stac-extensions/raster
 
-    rio-stac writes raster `v2.0.0`: band metadata goes in the STAC 1.1 `bands` array. `data_type`, `nodata`, `unit` and `statistics` are core fields; `scale`, `offset`, `sampling` and `histogram` get the `raster:` prefix. Following the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands), values shared by all bands are written on the asset, and a single band is written directly on the asset:
+    rio-stac writes raster `v2.0.0`: band metadata goes in the STAC 1.1 `bands` array. `data_type`, `nodata`, `unit` and `statistics` are core fields; `scale`, `offset`, `sampling`, `histogram` and `bits_per_sample` (from GDAL's `NBITS`, e.g. 12 bit data stored as `uint16`) get the `raster:` prefix. Following the [STAC best practices](https://github.com/radiantearth/stac-spec/blob/v1.1.0/best-practices.md#bands), values shared by all bands are written on the asset, and a single band is written directly on the asset:
 
     ```json
     "data_type": "uint16",
@@ -133,20 +134,23 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
 
     `eo:cloud_cover` is only written when the value is between 0 and 100 (GDAL uses `999` when the cloud cover is not available). You can also set it on a GeoTIFF yourself, e.g. with rasterio: `dst.update_tags(ns="IMAGERY", CLOUDCOVER=2)`. Other `eo:*` properties (e.g. `eo:snow_cover`) can be passed with `--property`; the `eo` extension is declared for them too.
 
-    Asset's bands: `name` and `description` are STAC 1.1 core fields, written in `bands` (or `description` directly on the asset for a single band). The `eo` extension (`v2.0.0`) is only declared when an `eo:*` field such as `eo:cloud_cover` is written.
+    Asset's bands: `name` and `description` are STAC 1.1 core fields, written in `bands` (or directly on the asset for a single band). `eo:common_name` is written when the band's GDAL color interpretation is an eo common name (e.g. `red`, `green`, `blue`, or `nir` with GDAL >= 3.10). The `eo` extension (`v2.0.0`) is only declared when an `eo:*` field such as `eo:common_name` or `eo:cloud_cover` is written.
     ```json
     "bands": [
       {
         "name": "b1",
-        "description": "red"
+        "description": "red",
+        "eo:common_name": "red"
       },
       {
         "name": "b2",
-        "description": "green"
+        "description": "green",
+        "eo:common_name": "green"
       },
       {
         "name": "b3",
-        "description": "blue"
+        "description": "blue",
+        "eo:common_name": "blue"
       }
     ],
     ```
@@ -292,6 +296,10 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
       0.0,
       1.0
     ],
+    "proj:centroid": {
+      "lat": 73.4675735659621,
+      "lon": -56.80794728322342
+    },
     "datetime": "2026-11-26T00:04:10.658713Z"
   },
   "links": [],
@@ -402,6 +410,10 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
       0.0,
       1.0
     ],
+    "proj:centroid": {
+      "lat": -23.018383999999998,
+      "lon": -44.75452
+    },
     "eo:cloud_cover": 2,
     "datetime": "2020-04-22T00:00:00Z"
   },
@@ -424,6 +436,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         {
           "name": "b1",
           "description": "red",
+          "eo:common_name": "red",
           "statistics": {
             "mean": 65.4388,
             "minimum": 0,
@@ -452,6 +465,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         {
           "name": "b2",
           "description": "green",
+          "eo:common_name": "green",
           "statistics": {
             "mean": 91.0308,
             "minimum": 0,
@@ -480,6 +494,7 @@ The CLI can be run as is, just by passing a `source` raster data. You can also u
         {
           "name": "b3",
           "description": "blue",
+          "eo:common_name": "blue",
           "statistics": {
             "mean": 27.568,
             "minimum": 0,

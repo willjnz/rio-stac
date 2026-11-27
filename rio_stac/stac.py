@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 import numpy
 import pystac
 import rasterio
+from pystac.extensions.eo import Band as EOBand
 from pystac.utils import str_to_datetime
 from rasterio import transform, warp
 from rasterio.features import bounds as feature_bounds
@@ -30,6 +31,7 @@ _SHAREABLE = {
     "unit",
     "raster:scale",
     "raster:offset",
+    "raster:bits_per_sample",
     "raster:sampling",
 }
 
@@ -101,6 +103,22 @@ def get_dataset_geom(
     return {"bbox": list(bbox), "footprint": geom}
 
 
+def _get_centroid(
+    src_dst: Union[DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
+) -> Tuple[float, float]:
+    """Get the center of the raster bounds, as (lon, lat) converted from the centroid of the dataset in its native CRS."""
+    left, bottom, right, top = src_dst.bounds
+    lons, lats, *_ = warp.transform(
+        src_dst.crs, EPSG_4326, [(left + right) / 2], [(bottom + top) / 2]
+    )
+    lon = lons[0]
+    # Wrap to -180/180 (e.g. for rasters with 0 to 360 longitudes)
+    if not -180 <= lon <= 180:
+        lon = (lon + 180) % 360 - 180
+
+    return lon, lats[0]
+
+
 def get_projection_info(
     src_dst: Union[DatasetReader, DatasetWriter, WarpedVRT, MemoryFile],
 ) -> Dict:
@@ -135,6 +153,13 @@ def get_projection_info(
 
     if src_dst.crs == EPSG_4326:
         del meta["bbox"], meta["geometry"]
+
+    if src_dst.crs:
+        try:
+            lon, lat = _get_centroid(src_dst)
+            meta["centroid"] = {"lat": lat, "lon": lon}
+        except Exception as ex:
+            warnings.warn(f"Could not get the centroid from dataset : {ex}")
 
     if not epsg and src_dst.crs:
         # WKT2
@@ -173,6 +198,14 @@ def get_eobands_info(
         description = descr or color
         if description:
             band_meta["description"] = description
+
+        # GDAL color interpretations that are eo common band names (the spectral ones need GDAL >= 3.10),
+        # see https://github.com/stac-extensions/eo/tree/v2.0.0#common-band-names. pystac's list is still the
+        # eo v1.1.0 one, without v2.0.0's `green05` and `rededge071/075/078`, but GDAL has none of those.
+        # GDAL's `yellow` is the CMYK print color, not the eo `yellow` band.
+        # https://github.com/stac-utils/pystac/pull/1829 upgrades to eo v2.0.0 common band names.
+        if color != "yellow" and EOBand.band_range(color):
+            band_meta["eo:common_name"] = color
 
         eo_bands.append(band_meta)
 
@@ -299,7 +332,7 @@ def get_raster_info(  # noqa: C901
 
     area_or_point = src_dst.tags().get("AREA_OR_POINT", "").lower()
 
-    # Missing `bits_per_sample` and `spatial_resolution`
+    # Missing `spatial_resolution`
     for band in src_dst.indexes:
         value = {
             "data_type": src_dst.dtypes[band - 1],
@@ -308,6 +341,13 @@ def get_raster_info(  # noqa: C901
         }
         if area_or_point:
             value["raster:sampling"] = area_or_point
+
+        # The actual number of bits used by the band, normally only written when it is non-standard for the
+        # `data_type`, e.g. 1 bit data stored as uint8 or 12 bit data as uint16. GDAL only sets the NBITS tag
+        # in that case. https://github.com/stac-extensions/raster/tree/v2.0.0#fields
+        nbits = src_dst.tags(band, ns="IMAGE_STRUCTURE").get("NBITS")
+        if nbits:
+            value["raster:bits_per_sample"] = int(nbits)
 
         # If the Nodata is not set we don't forward it.
         if src_dst.nodata is not None:
@@ -516,9 +556,8 @@ def create_stac_item(  # noqa: C901
         }
         if any(key.startswith("raster:") for key in band_keys):
             extensions.append(_extension_url("raster", RASTER_EXT_VERSION))
-        # rio-stac writes no eo:* band fields (`name` and `description` are core), so eo is only declared
-        # for eo:* item properties: `eo:cloud_cover` from GDAL metadata, or ones passed in `properties`.
-        if with_eo and any(key.startswith("eo:") for key in properties):
+        # e.g. `eo:common_name` in bands, `eo:cloud_cover` from GDAL metadata, or ones passed in `properties`
+        if with_eo and any(key.startswith("eo:") for key in [*band_keys, *properties]):
             extensions.append(_extension_url("eo", EO_EXT_VERSION))
 
     # item
